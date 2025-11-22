@@ -1,146 +1,51 @@
 # Formulary Windows Updater
-
 $ErrorActionPreference = "Stop"
 
 # Colors
 $Green = [ConsoleColor]::Green
 $Red = [ConsoleColor]::Red
-$Yellow = [ConsoleColor]::Yellow
 $Blue = [ConsoleColor]::Blue
 
-# Directories
 $InstallDir = "$HOME\.formulary"
-
-# Check PowerShell Execution Policy
-$ExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
-$AllowedPolicies = @("Unrestricted", "RemoteSigned", "Bypass")
-
-if ($ExecutionPolicy -notin $AllowedPolicies) {
-    Write-Host ""
-    Write-Host "ERROR: PowerShell Execution Policy Issue" -ForegroundColor $Red
-    Write-Host ""
-    Write-Host "Your current execution policy is: $ExecutionPolicy" -ForegroundColor $Yellow
-    Write-Host "This policy is too restrictive to run uv and other required tools." -ForegroundColor $Yellow
-    Write-Host ""
-    Write-Host "To fix this, run PowerShell as Administrator and execute:" -ForegroundColor $Green
-    Write-Host "  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor $Green
-    Write-Host ""
-    Write-Host "Alternatively, run this script with bypass:" -ForegroundColor $Green
-    Write-Host "  powershell -ExecutionPolicy Bypass -File .\update.ps1" -ForegroundColor $Green
-    Write-Host ""
-    exit 1
-}
-
-function Print-Status($Message) {
-    Write-Host "==> $Message" -ForegroundColor $Blue
-}
-
-function Print-Success($Message) {
-    Write-Host "✓ $Message" -ForegroundColor $Green
-}
-
-function Print-Error($Message) {
-    Write-Host "✗ $Message" -ForegroundColor $Red
-}
-
-function Print-Warning($Message) {
-    Write-Host "⚠ $Message" -ForegroundColor $Yellow
-}
 
 Write-Host "Formulary Update" -ForegroundColor $Blue
 Write-Host ""
 
-# Check Installation
-Print-Status "Checking for existing installation..."
-
+# Check installation exists
 if (-not (Test-Path "$InstallDir\repo")) {
-    Print-Error "Formulary is not installed at $InstallDir\repo"
-    Write-Host "Please run install.ps1 first"
+    Write-Host "ERROR: Formulary not installed" -ForegroundColor $Red
     exit 1
 }
 
-Print-Success "Found existing installation"
-
-# Get Current Version
+# Update repository
+Write-Host "Updating repository..." -ForegroundColor $Blue
 Set-Location "$InstallDir\repo"
+
 $CurrentCommit = git rev-parse --short HEAD
-Print-Status "Current version: $CurrentCommit"
+Write-Host "Current: $CurrentCommit"
 
-# Update Repository
-Print-Status "Fetching latest updates..."
-
-# Stash local changes
-$GitStatus = git diff-index --quiet HEAD --
-if ($LASTEXITCODE -ne 0) {
-    Print-Warning "You have local changes. Stashing them..."
-    $Date = Get-Date -Format "yyyyMMdd_HHmmss"
-    git stash push -m "Auto-stash before update $Date"
-}
-
-# Fetch
 git fetch origin
 if ($LASTEXITCODE -ne 0) {
-    Print-Error "Failed to fetch updates from remote"
+    Write-Host "ERROR: Failed to fetch updates" -ForegroundColor $Red
     exit 1
 }
 
-# Check for updates
 $Local = git rev-parse HEAD
 $Remote = git rev-parse origin/main
 
 if ($Local -eq $Remote) {
-    Print-Success "Already up to date!"
+    Write-Host "Already up to date" -ForegroundColor $Green
 }
 else {
-    Print-Status "New updates available. Updating..."
-    
-    # Force update
     git reset --hard origin/main
-    if ($LASTEXITCODE -ne 0) {
-        Print-Error "Failed to update repository"
-        exit 1
-    }
-    
     $NewCommit = git rev-parse --short HEAD
-    Print-Success "Updated to version: $NewCommit"
+    Write-Host "Updated to: $NewCommit" -ForegroundColor $Green
 }
 
-# Update Dependencies
-Print-Status "Updating dependencies..."
-
-Set-Location "$InstallDir\repo"
-try {
-    uv sync
-}
-catch {
-    Print-Error "Failed to update dependencies"
-    exit 1
-}
-
-Print-Success "Dependencies updated successfully"
-
-# Update Playwright
-Print-Status "Checking Playwright browsers..."
-
-$Response = Read-Host "Do you want to update Playwright browsers? (y/N)"
-if ($Response -match "^[Yy]$") {
-    Set-Location "$InstallDir\repo"
-    try {
-        uv run playwright install
-    }
-    catch {
-        Print-Warning "Failed to update Playwright browsers"
-        Print-Warning "You can update them later by running 'formulary-install-browsers'"
-        return
-    }
-    Print-Success "Playwright browsers updated"
-}
-else {
-    Print-Status "Skipping Playwright browser update"
-}
+# Update dependencies
+Write-Host ""
+Write-Host "Updating dependencies..." -ForegroundColor $Blue
+uv sync
 
 Write-Host ""
-Write-Host "Update Complete!" -ForegroundColor $Green
-Write-Host ""
-Print-Success "Formulary has been updated successfully"
-Write-Host ""
+Write-Host "Update complete!" -ForegroundColor $Green
