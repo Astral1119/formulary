@@ -22,10 +22,16 @@ A package manager for Google Sheets that enables you to install, manage, and sha
 
 ### Installation
 
-Run this command to install Formulary:
+**macOS / Linux:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.ps1 | iex
 ```
 
 ## Updating

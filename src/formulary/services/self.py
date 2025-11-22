@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import httpx
+import platform
 from rich.console import Console
 
 console = Console()
@@ -15,6 +16,7 @@ class SelfManagementService:
     INSTALL_DIR = Path.home() / ".formulary" / "repo"
     CACHE_FILE = Path.home() / ".formulary" / "update_check_cache.json"
     CACHE_DURATION = timedelta(hours=24)
+    IS_WINDOWS = platform.system() == "Windows"
     
     def __init__(self):
         """initialize the self-management service."""
@@ -30,8 +32,16 @@ class SelfManagementService:
             raise RuntimeError(
                 "This command is only available for standard installations.\n"
                 "You appear to be running Formulary from source.\n"
+            install_cmd = (
+                "irm https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.ps1 | iex"
+                if self.IS_WINDOWS else
+                "curl -fsSL https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.sh | bash"
+            )
+            raise RuntimeError(
+                "This command is only available for standard installations.\n"
+                "You appear to be running Formulary from source.\n"
                 "To use self-management commands, install Formulary using:\n"
-                "  curl -fsSL https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.sh | bash"
+                f"  {install_cmd}"
             )
     
     def _get_local_commit_info(self) -> Optional[Dict[str, Any]]:
@@ -155,8 +165,6 @@ class SelfManagementService:
             remote_info["date"] > local_info["date"]
         )
         
-
-        
         result = {
             "update_available": update_available,
             "local_commit": local_info["sha"],
@@ -179,7 +187,8 @@ class SelfManagementService:
         """
         self._ensure_standard_install()
         
-        update_script = self.INSTALL_DIR / "scripts" / "update.sh"
+        update_script_name = "update.ps1" if self.IS_WINDOWS else "update.sh"
+        update_script = self.INSTALL_DIR / "scripts" / update_script_name
         
         if not update_script.exists():
             raise FileNotFoundError(
@@ -190,10 +199,16 @@ class SelfManagementService:
         console.print("[blue]Running update script...[/blue]")
         
         # run the update script
-        subprocess.run(
-            ["bash", str(update_script)],
-            check=True
-        )
+        if self.IS_WINDOWS:
+            subprocess.run(
+                ["powershell", "-ExecutionPolicy", "ByPass", "-File", str(update_script)],
+                check=True
+            )
+        else:
+            subprocess.run(
+                ["bash", str(update_script)],
+                check=True
+            )
         
         # clear the update check cache after successful update
         if self.CACHE_FILE.exists():
@@ -209,7 +224,8 @@ class SelfManagementService:
         """
         self._ensure_standard_install()
         
-        uninstall_script = self.INSTALL_DIR / "scripts" / "uninstall.sh"
+        uninstall_script_name = "uninstall.ps1" if self.IS_WINDOWS else "uninstall.sh"
+        uninstall_script = self.INSTALL_DIR / "scripts" / uninstall_script_name
         
         if not uninstall_script.exists():
             raise FileNotFoundError(
@@ -220,7 +236,13 @@ class SelfManagementService:
         console.print("[yellow]Running uninstall script...[/yellow]")
         
         # run the uninstall script with --yes flag since user already confirmed in CLI
-        subprocess.run(
-            ["bash", str(uninstall_script), "--yes"],
-            check=True
-        )
+        if self.IS_WINDOWS:
+            subprocess.run(
+                ["powershell", "-ExecutionPolicy", "ByPass", "-File", str(uninstall_script), "--yes"],
+                check=True
+            )
+        else:
+            subprocess.run(
+                ["bash", str(uninstall_script), "--yes"],
+                check=True
+            )
