@@ -1,0 +1,22 @@
+[0;34mFormulary - Google Sheets Package Manager[0m
+
+[0;34m==>[0m Checking Python version...
+[0;32m✓[0m Python 3.12 detected
+[0;34m==>[0m Checking for git...
+[0;32m✓[0m git is installed
+[0;34m==>[0m Checking for uv package manager...
+[0;32m✓[0m uv is already installed
+
+[1;33m⚠[0m IMPORTANT: Google Auth Isolation
+To keep your Google account credentials isolated, it is recommended to create
+a separate profile for your projects.
+
+After installation, run:
+  [0;32mformulary profile add <alias>[0m
+
+This will create a new browser profile for your project.
+
+[0;34m==>[0m Installing Formulary...
+[1;33m⚠[0m Formulary is already installed at /Users/astral/.formulary/repo
+
+[0;34m==>[0m Installation cancelled
