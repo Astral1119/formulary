@@ -69,7 +69,8 @@ Print-Status "Removing installation files..."
 if (Test-Path "$InstallDir\repo") {
     Remove-Item -Recurse -Force "$InstallDir\repo"
     Print-Success "Removed installation directory"
-} else {
+}
+else {
     Print-Warning "Installation directory not found"
 }
 
@@ -84,8 +85,18 @@ if (Test-Path "$InstallDir\config.toml") {
     $DataExists = $true
 }
 
-if (Test-Path "$InstallDir\playwright_profile") {
-    Write-Host "  • Browser profile: $InstallDir\playwright_profile"
+if (Test-Path "$InstallDir\profiles") {
+    Write-Host "  • Browser profiles: $InstallDir\profiles"
+    $DataExists = $true
+}
+
+if (Test-Path "$InstallDir\profiles.json") {
+    Write-Host "  • Profile config: $InstallDir\profiles.json"
+    $DataExists = $true
+}
+
+if (Test-Path "$InstallDir\browser_choice") {
+    Write-Host "  • Browser choice: $InstallDir\browser_choice"
     $DataExists = $true
 }
 
@@ -101,21 +112,25 @@ if ($DataExists) {
         Print-Status "Removing user data..."
         
         if (Test-Path "$InstallDir\config.toml") { Remove-Item -Force "$InstallDir\config.toml" }
-        if (Test-Path "$InstallDir\playwright_profile") { Remove-Item -Recurse -Force "$InstallDir\playwright_profile" }
+        if (Test-Path "$InstallDir\profiles") { Remove-Item -Recurse -Force "$InstallDir\profiles" }
+        if (Test-Path "$InstallDir\profiles.json") { Remove-Item -Force "$InstallDir\profiles.json" }
+        if (Test-Path "$InstallDir\browser_choice") { Remove-Item -Force "$InstallDir\browser_choice" }
         if (Test-Path "$InstallDir\cache") { Remove-Item -Recurse -Force "$InstallDir\cache" }
         
         # Remove directory if empty
-        if ((Get-ChildItem $InstallDir).Count -eq 0) {
+        if ((Get-ChildItem $InstallDir -ErrorAction SilentlyContinue).Count -eq 0) {
             Remove-Item -Force $InstallDir
         }
         
         Print-Success "User data removed"
-    } else {
+    }
+    else {
         Print-Status "User data preserved at $InstallDir"
     }
-} else {
+}
+else {
     Print-Status "No user data found"
-    if (Test-Path $InstallDir -and (Get-ChildItem $InstallDir).Count -eq 0) {
+    if (Test-Path $InstallDir -and (Get-ChildItem $InstallDir -ErrorAction SilentlyContinue).Count -eq 0) {
         Remove-Item -Force $InstallDir
     }
 }

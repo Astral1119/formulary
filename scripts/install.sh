@@ -153,9 +153,13 @@ install_dependencies() {
     cd "$INSTALL_DIR/repo"
     
     # use uv command if available, otherwise use explicit path
-    UV_CMD="uv"
-    if ! command -v uv &> /dev/null && [ -f "$HOME/.cargo/bin/uv" ]; then
+    if command -v uv &> /dev/null; then
+        UV_CMD="uv"
+    elif [ -f "$HOME/.cargo/bin/uv" ]; then
         UV_CMD="$HOME/.cargo/bin/uv"
+    else
+        print_error "Could not find uv command"
+        exit 1
     fi
     
     $UV_CMD sync || {
@@ -173,16 +177,37 @@ install_playwright() {
     cd "$INSTALL_DIR/repo"
     
     # use uv command if available, otherwise use explicit path
-    UV_CMD="uv"
-    if ! command -v uv &> /dev/null && [ -f "$HOME/.cargo/bin/uv" ]; then
+    if command -v uv &> /dev/null; then
+        UV_CMD="uv"
+    elif [ -f "$HOME/.cargo/bin/uv" ]; then
         UV_CMD="$HOME/.cargo/bin/uv"
+    else
+        print_error "Could not find uv command"
+        exit 1
     fi
     
-    $UV_CMD run playwright install || {
+    # ask user which browser to use
+    echo ""
+    echo "Which browser would you like to use?"
+    echo "  1) Chromium (default, recommended)"
+    echo "  2) Firefox"
+    echo ""
+    read -p "Enter choice [1-2] (default: 1): " -n 1 -r
+    echo
+    
+    BROWSER="chromium"
+    if [[ $REPLY == "2" ]]; then
+        BROWSER="firefox"
+    fi
+    
+    $UV_CMD run playwright install $BROWSER || {
         print_warning "Failed to install Playwright browsers automatically"
         print_warning "You may need to run 'formulary-install-browsers' later"
         return
     }
+    
+    # save browser choice for future use
+    echo "$BROWSER" > "$INSTALL_DIR/browser_choice"
     
     print_success "Playwright browsers installed successfully"
 }
@@ -207,8 +232,16 @@ EOF
     cat > "$BIN_DIR/formulary-install-browsers" << 'EOF'
 #!/usr/bin/env bash
 FORMULARY_DIR="$HOME/.formulary/repo"
+BROWSER_FILE="$HOME/.formulary/browser_choice"
 cd "$FORMULARY_DIR"
-uv run playwright install
+
+if [ -f "$BROWSER_FILE" ]; then
+    BROWSER=$(cat "$BROWSER_FILE")
+else
+    BROWSER="chromium"
+fi
+
+uv run playwright install $BROWSER
 EOF
     
     chmod +x "$BIN_DIR/formulary-install-browsers"

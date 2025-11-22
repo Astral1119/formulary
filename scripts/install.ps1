@@ -30,6 +30,7 @@ if ($ExecutionPolicy -notin $AllowedPolicies) {
     Write-Host "Alternatively, run this installer with bypass:" -ForegroundColor $Green
     Write-Host "  powershell -ExecutionPolicy Bypass -File .\install.ps1" -ForegroundColor $Green
     Write-Host ""
+    Read-Host "Press Enter to exit"
     exit 1
 }
 
@@ -56,6 +57,7 @@ function Check-Python {
     if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
         Print-Error "Python is not installed"
         Write-Host "Please install Python 3.12 or higher from https://www.python.org/"
+        Read-Host "Press Enter to exit"
         exit 1
     }
     
@@ -64,6 +66,7 @@ function Check-Python {
     
     if ([int]$Major -lt 3 -or ([int]$Major -eq 3 -and [int]$Minor -lt 12)) {
         Print-Error "Python version $VersionInfo is installed, but version 3.12 or higher is required"
+        Read-Host "Press Enter to exit"
         exit 1
     }
     
@@ -77,6 +80,7 @@ function Check-Git {
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         Print-Error "git is not installed"
         Write-Host "Please install git to continue."
+        Read-Host "Press Enter to exit"
         exit 1
     }
     Print-Success "git is installed"
@@ -93,6 +97,7 @@ function Check-Uv {
         }
         catch {
             Print-Error "Failed to install uv"
+            Read-Host "Press Enter to exit"
             exit 1
         }
         
@@ -107,6 +112,7 @@ function Check-Uv {
         if (-not $UvFound) {
             Print-Error "Failed to verify uv installation"
             Print-Error "Expected location: $UvExe"
+            Read-Host "Press Enter to exit"
             exit 1
         }
         Print-Success "uv installed successfully"
@@ -142,7 +148,7 @@ function Install-Formulary {
         $Response = Read-Host "Do you want to reinstall? (y/N)"
         if ($Response -notmatch "^[Yy]$") {
             Print-Status "Installation cancelled"
-            exit 0
+            return
         }
         Remove-Item -Recurse -Force "$InstallDir\repo"
     }
@@ -153,11 +159,13 @@ function Install-Formulary {
     }
     catch {
         Print-Error "Failed to clone repository"
+        Read-Host "Press Enter to exit"
         exit 1
     }
     
     if (-not (Test-Path "$InstallDir\repo")) {
         Print-Error "Repository directory was not created"
+        Read-Host "Press Enter to exit"
         exit 1
     }
     
@@ -171,11 +179,18 @@ function Install-Dependencies {
     Set-Location "$InstallDir\repo"
     
     # Use uv command if available, otherwise use explicit path
-    $UvCmd = "uv"
-    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    if (Get-Command uv -ErrorAction SilentlyContinue) {
+        $UvCmd = "uv"
+    }
+    else {
         $UvExe = Join-Path (Join-Path $HOME ".cargo\bin") "uv.exe"
         if (Test-Path $UvExe) {
             $UvCmd = $UvExe
+        }
+        else {
+            Print-Error "Could not find uv command"
+            Read-Host "Press Enter to exit"
+            exit 1
         }
     }
     
@@ -184,6 +199,7 @@ function Install-Dependencies {
     }
     catch {
         Print-Error "Failed to install dependencies"
+        Read-Host "Press Enter to exit"
         exit 1
     }
     
@@ -197,22 +213,45 @@ function Install-Playwright {
     Set-Location "$InstallDir\repo"
     
     # Use uv command if available, otherwise use explicit path
-    $UvCmd = "uv"
-    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    if (Get-Command uv -ErrorAction SilentlyContinue) {
+        $UvCmd = "uv"
+    }
+    else {
         $UvExe = Join-Path (Join-Path $HOME ".cargo\bin") "uv.exe"
         if (Test-Path $UvExe) {
             $UvCmd = $UvExe
         }
+        else {
+            Print-Error "Could not find uv command"
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
+    }
+    
+    # Ask user which browser to use
+    Write-Host ""
+    Write-Host "Which browser would you like to use?"
+    Write-Host "  1) Chromium (default, recommended)"
+    Write-Host "  2) Firefox"
+    Write-Host ""
+    $Choice = Read-Host "Enter choice [1-2] (default: 1)"
+    
+    $Browser = "chromium"
+    if ($Choice -eq "2") {
+        $Browser = "firefox"
     }
     
     try {
-        & $UvCmd run playwright install
+        & $UvCmd run playwright install $Browser
     }
     catch {
         Print-Warning "Failed to install Playwright browsers automatically"
         Print-Warning "You may need to run 'formulary-install-browsers' later"
         return
     }
+    
+    # Save browser choice for future use
+    "$Browser" | Out-File -FilePath "$InstallDir\browser_choice" -Encoding ASCII
     
     Print-Success "Playwright browsers installed successfully"
 }
@@ -236,8 +275,14 @@ function Create-Wrappers {
     # Create formulary-install-browsers.cmd
     $BrowserCmd = "@echo off`r`n" +
     "set FORMULARY_DIR=$InstallDir\repo`r`n" +
+    "set BROWSER_FILE=$InstallDir\browser_choice`r`n" +
     "cd /d %FORMULARY_DIR%`r`n" +
-    "uv run playwright install"
+    "if exist %BROWSER_FILE% (`r`n" +
+    "    set /p BROWSER=<%BROWSER_FILE%`r`n" +
+    ") else (`r`n" +
+    "    set BROWSER=chromium`r`n" +
+    ")`r`n" +
+    "uv run playwright install %BROWSER%"
                   
     $BrowserCmd | Out-File -FilePath "$BinDir\formulary-install-browsers.cmd" -Encoding ASCII
     

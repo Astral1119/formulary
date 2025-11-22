@@ -31,10 +31,14 @@ async def authenticate_profile(profile_path: Path) -> str:
     # ensure profile directory exists
     profile_path.mkdir(parents=True, exist_ok=True)
     
+    # get browser choice
+    browser = _get_browser_choice()
+    
     # create driver with headed browser for authentication
     driver = PlaywrightDriver(
         headless=False,  # must be headed for user to authenticate
-        user_data_dir=profile_path
+        user_data_dir=profile_path,
+        browser=browser
     )
     
     try:
@@ -71,6 +75,15 @@ async def authenticate_profile(profile_path: Path) -> str:
     
     finally:
         await driver.stop()
+
+
+def _get_browser_choice() -> str:
+    """Read browser choice from installation config."""
+    from ..config import get_config_dir
+    browser_file = get_config_dir() / "browser_choice"
+    if browser_file.exists():
+        return browser_file.read_text().strip()
+    return "chromium"  # default
 
 
 async def _extract_email(page) -> str:

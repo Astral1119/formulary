@@ -3,9 +3,15 @@ from typing import Optional
 from playwright.async_api import BrowserContext, async_playwright, Playwright, Page
 
 class PlaywrightDriver:
-    def __init__(self, headless: bool = True, user_data_dir: Optional[Path] = None):
+    def __init__(
+        self, 
+        headless: bool = True, 
+        user_data_dir: Optional[Path] = None,
+        browser: str = "chromium"
+    ):
         self.headless = headless
         self.user_data_dir = user_data_dir  # must be provided by caller now
+        self.browser = browser
         self._playwright: Optional[Playwright] = None
         self._context: Optional[BrowserContext] = None
         self._page: Optional[Page] = None
@@ -16,10 +22,15 @@ class PlaywrightDriver:
         
         self.user_data_dir.mkdir(parents=True, exist_ok=True)
         
-        self._context = await self._playwright.chromium.launch_persistent_context(
+        # Select browser dynamically
+        if self.browser == "firefox":
+            browser_type = self._playwright.firefox
+        else:  # default to chromium
+            browser_type = self._playwright.chromium
+        
+        self._context = await browser_type.launch_persistent_context(
             user_data_dir=str(self.user_data_dir),
             headless=self.headless,
-            channel="chrome",
             args=[
                 "--no-first-run",
                 "--no-default-browser-check",

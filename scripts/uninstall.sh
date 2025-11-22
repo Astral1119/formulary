@@ -98,8 +98,18 @@ remove_user_data() {
         DATA_EXISTS=true
     fi
     
-    if [ -d "$INSTALL_DIR/playwright_profile" ]; then
-        echo "  • Browser profile: $INSTALL_DIR/playwright_profile"
+    if [ -d "$INSTALL_DIR/profiles" ]; then
+        echo "  • Browser profiles: $INSTALL_DIR/profiles"
+        DATA_EXISTS=true
+    fi
+    
+    if [ -f "$INSTALL_DIR/profiles.json" ]; then
+        echo "  • Profile config: $INSTALL_DIR/profiles.json"
+        DATA_EXISTS=true
+    fi
+    
+    if [ -f "$INSTALL_DIR/browser_choice" ]; then
+        echo "  • Browser choice: $INSTALL_DIR/browser_choice"
         DATA_EXISTS=true
     fi
     
@@ -117,7 +127,9 @@ remove_user_data() {
             print_status "Removing user data..."
             
             [ -f "$INSTALL_DIR/config.toml" ] && rm -f "$INSTALL_DIR/config.toml"
-            [ -d "$INSTALL_DIR/playwright_profile" ] && rm -rf "$INSTALL_DIR/playwright_profile"
+            [ -d "$INSTALL_DIR/profiles" ] && rm -rf "$INSTALL_DIR/profiles"
+            [ -f "$INSTALL_DIR/profiles.json" ] && rm -f "$INSTALL_DIR/profiles.json"
+            [ -f "$INSTALL_DIR/browser_choice" ] && rm -f "$INSTALL_DIR/browser_choice"
             [ -d "$INSTALL_DIR/cache" ] && rm -rf "$INSTALL_DIR/cache"
             
             # remove the entire directory if it's empty
