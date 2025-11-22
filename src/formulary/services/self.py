@@ -29,9 +29,6 @@ class SelfManagementService:
     def _ensure_standard_install(self):
         """raise an error if not installed via standard method."""
         if not self._is_standard_install:
-            raise RuntimeError(
-                "This command is only available for standard installations.\n"
-                "You appear to be running Formulary from source.\n"
             install_cmd = (
                 "irm https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.ps1 | iex"
                 if self.IS_WINDOWS else

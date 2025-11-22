@@ -95,7 +95,11 @@ recommend_formulary_profile() {
     echo ""
     echo "This will create a new browser profile for your project."
     echo ""
-    read -p "Press Enter to continue..."
+    if [ -t 0 ]; then
+        read -p "Press Enter to continue..."
+    elif [ -c /dev/tty ]; then
+        read -p "Press Enter to continue..." < /dev/tty
+    fi
 }
 
 # clone or update the repository
@@ -111,7 +115,14 @@ install_formulary() {
     # clone the repository
     if [ -d "$INSTALL_DIR/repo" ]; then
         print_warning "Formulary is already installed at $INSTALL_DIR/repo"
-        read -p "Do you want to reinstall? (y/N) " -n 1 -r
+        if [ -t 0 ]; then
+            read -p "Do you want to reinstall? (y/N) " -n 1 -r
+        elif [ -c /dev/tty ]; then
+            read -p "Do you want to reinstall? (y/N) " -n 1 -r < /dev/tty
+        else
+            # non-interactive, assume no
+            REPLY="n"
+        fi
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             print_status "Installation cancelled"
