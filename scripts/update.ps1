@@ -142,5 +142,5 @@ else {
 Write-Host ""
 Write-Host "Update Complete!" -ForegroundColor $Green
 Write-Host ""
-Print-Success "Formulary has been updated successfully!"
+Print-Success "Formulary has been updated successfully"
 Write-Host ""
