@@ -18,6 +18,7 @@ A package manager for Google Sheets that enables you to install, manage, and sha
 ### Prerequisites
 
 - Python 3.12 or higher
+- Git
 - Google account with access to Google Sheets
 
 ### Installation
