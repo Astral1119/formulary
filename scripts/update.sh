@@ -122,15 +122,7 @@ update_playwright() {
     fi
 }
 
-# show changelog if available
-show_changelog() {
-    print_status "Recent changes:"
-    echo ""
-    
-    cd "$INSTALL_DIR/repo"
-    git log --oneline --decorate --graph -10 || true
-    echo ""
-}
+
 
 # main update flow
 main() {
@@ -145,8 +137,6 @@ main() {
     echo ""
     print_success "Formulary has been updated successfully!"
     echo ""
-    
-    show_changelog
 }
 
 main

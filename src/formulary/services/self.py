@@ -155,6 +155,8 @@ class SelfManagementService:
             remote_info["date"] > local_info["date"]
         )
         
+
+        
         result = {
             "update_available": update_available,
             "local_commit": local_info["sha"],
