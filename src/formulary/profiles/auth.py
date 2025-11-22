@@ -54,10 +54,10 @@ async def authenticate_profile(profile_path: Path) -> str:
         try:
             # wait for either:
             # 1. successful auth (profile icon appears)
-            # 2. timeout (60 seconds)
+            # 2. timeout (5 minutes to allow for MFA)
             await page.wait_for_selector(
                 'a[aria-label*="Google Account"], [data-ogpc="gb-google-account"]',
-                timeout=60000  # 60 seconds
+                timeout=300000  # 5 minutes for MFA
             )
             
             # try to extract email from the page
