@@ -75,7 +75,8 @@ check_uv() {
         # add uv to path for this session
         export PATH="$HOME/.cargo/bin:$PATH"
         
-        if ! command -v uv &> /dev/null; then
+        # verify installation by checking both PATH and explicit binary location
+        if ! command -v uv &> /dev/null && [ ! -f "$HOME/.cargo/bin/uv" ]; then
             print_error "Failed to install uv"
             exit 1
         fi
@@ -150,7 +151,14 @@ install_dependencies() {
     print_status "Installing dependencies..."
     
     cd "$INSTALL_DIR/repo"
-    uv sync || {
+    
+    # use uv command if available, otherwise use explicit path
+    UV_CMD="uv"
+    if ! command -v uv &> /dev/null && [ -f "$HOME/.cargo/bin/uv" ]; then
+        UV_CMD="$HOME/.cargo/bin/uv"
+    fi
+    
+    $UV_CMD sync || {
         print_error "Failed to install dependencies"
         exit 1
     }
@@ -163,7 +171,14 @@ install_playwright() {
     print_status "Installing Playwright browsers..."
     
     cd "$INSTALL_DIR/repo"
-    uv run playwright install || {
+    
+    # use uv command if available, otherwise use explicit path
+    UV_CMD="uv"
+    if ! command -v uv &> /dev/null && [ -f "$HOME/.cargo/bin/uv" ]; then
+        UV_CMD="$HOME/.cargo/bin/uv"
+    fi
+    
+    $UV_CMD run playwright install || {
         print_warning "Failed to install Playwright browsers automatically"
         print_warning "You may need to run 'formulary-install-browsers' later"
         return

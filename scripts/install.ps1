@@ -70,20 +70,25 @@ function Check-Uv {
         Print-Warning "uv not found. Installing uv..."
         try {
             irm https://astral.sh/uv/install.ps1 | iex
-        } catch {
+        }
+        catch {
             Print-Error "Failed to install uv"
             exit 1
         }
         
         # Add to PATH for this session
-        $Env:PATH += ";$HOME\.cargo\bin"
+        $CargoPath = "$HOME\.cargo\bin"
+        $Env:PATH = "$Env:PATH;$CargoPath"
         
-        if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+        # Verify installation by checking both PATH and explicit binary location
+        $UvExe = "$CargoPath\uv.exe"
+        if (-not (Get-Command uv -ErrorAction SilentlyContinue) -and -not (Test-Path $UvExe)) {
             Print-Error "Failed to verify uv installation"
             exit 1
         }
         Print-Success "uv installed successfully"
-    } else {
+    }
+    else {
         Print-Success "uv is already installed"
     }
 }
@@ -92,9 +97,6 @@ function Check-Uv {
 function Recommend-Profile {
     Write-Host ""
     Print-Warning "IMPORTANT: Google Authentication"
-    Write-Host ""
-    Write-Host "To keep your Google account credentials isolated, it is recommended to create"
-    Write-Host "a separate profile for your projects."
     Write-Host ""
     Write-Host "After installation, run:"
     Write-Host "  formulary profile add <alias>" -ForegroundColor $Green
@@ -125,7 +127,8 @@ function Install-Formulary {
     Print-Status "Cloning repository..."
     try {
         git clone https://github.com/Astral1119/formulary.git "$InstallDir\repo"
-    } catch {
+    }
+    catch {
         Print-Error "Failed to clone repository"
         exit 1
     }
@@ -143,9 +146,20 @@ function Install-Dependencies {
     Print-Status "Installing dependencies..."
     
     Set-Location "$InstallDir\repo"
+    
+    # Use uv command if available, otherwise use explicit path
+    $UvCmd = "uv"
+    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+        $UvExe = "$HOME\.cargo\bin\uv.exe"
+        if (Test-Path $UvExe) {
+            $UvCmd = $UvExe
+        }
+    }
+    
     try {
-        uv sync
-    } catch {
+        & $UvCmd sync
+    }
+    catch {
         Print-Error "Failed to install dependencies"
         exit 1
     }
@@ -158,9 +172,20 @@ function Install-Playwright {
     Print-Status "Installing Playwright browsers..."
     
     Set-Location "$InstallDir\repo"
+    
+    # Use uv command if available, otherwise use explicit path
+    $UvCmd = "uv"
+    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+        $UvExe = "$HOME\.cargo\bin\uv.exe"
+        if (Test-Path $UvExe) {
+            $UvCmd = $UvExe
+        }
+    }
+    
     try {
-        uv run playwright install
-    } catch {
+        & $UvCmd run playwright install
+    }
+    catch {
         Print-Warning "Failed to install Playwright browsers automatically"
         Print-Warning "You may need to run 'formulary-install-browsers' later"
         return
@@ -179,17 +204,17 @@ function Create-Wrappers {
     
     # Create formulary.cmd
     $FormularyCmd = "@echo off`r`n" +
-                    "set FORMULARY_DIR=$InstallDir\repo`r`n" +
-                    "cd /d %FORMULARY_DIR%`r`n" +
-                    "uv run python -m formulary.cli %*"
+    "set FORMULARY_DIR=$InstallDir\repo`r`n" +
+    "cd /d %FORMULARY_DIR%`r`n" +
+    "uv run python -m formulary.cli %*"
     
     $FormularyCmd | Out-File -FilePath "$BinDir\formulary.cmd" -Encoding ASCII
     
     # Create formulary-install-browsers.cmd
     $BrowserCmd = "@echo off`r`n" +
-                  "set FORMULARY_DIR=$InstallDir\repo`r`n" +
-                  "cd /d %FORMULARY_DIR%`r`n" +
-                  "uv run playwright install"
+    "set FORMULARY_DIR=$InstallDir\repo`r`n" +
+    "cd /d %FORMULARY_DIR%`r`n" +
+    "uv run playwright install"
                   
     $BrowserCmd | Out-File -FilePath "$BinDir\formulary-install-browsers.cmd" -Encoding ASCII
     
@@ -208,7 +233,8 @@ function Setup-Path {
         Write-Host ""
         Write-Host "You can do this by searching for 'Environment Variables' in Windows Settings."
         Write-Host ""
-    } else {
+    }
+    else {
         Print-Success "PATH is already configured"
     }
 }
