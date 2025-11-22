@@ -13,6 +13,26 @@ $Reset = [ConsoleColor]::White
 $InstallDir = "$HOME\.formulary"
 $BinDir = "$HOME\.local\bin"
 
+# Check PowerShell Execution Policy
+$ExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
+$AllowedPolicies = @("Unrestricted", "RemoteSigned", "Bypass")
+
+if ($ExecutionPolicy -notin $AllowedPolicies) {
+    Write-Host ""
+    Write-Host "ERROR: PowerShell Execution Policy Issue" -ForegroundColor $Red
+    Write-Host ""
+    Write-Host "Your current execution policy is: $ExecutionPolicy" -ForegroundColor $Yellow
+    Write-Host "This policy is too restrictive to run uv and other required tools." -ForegroundColor $Yellow
+    Write-Host ""
+    Write-Host "To fix this, run PowerShell as Administrator and execute:" -ForegroundColor $Green
+    Write-Host "  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor $Green
+    Write-Host ""
+    Write-Host "Alternatively, run this installer with bypass:" -ForegroundColor $Green
+    Write-Host "  powershell -ExecutionPolicy Bypass -File .\install.ps1" -ForegroundColor $Green
+    Write-Host ""
+    exit 1
+}
+
 function Print-Status($Message) {
     Write-Host "==> $Message" -ForegroundColor $Blue
 }

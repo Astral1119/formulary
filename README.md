@@ -30,8 +30,23 @@ curl -fsSL https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/i
 
 **Windows (PowerShell):**
 
+> [!IMPORTANT]
+> Windows users must configure PowerShell execution policy before installation.
+> Run PowerShell as Administrator and execute:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+
+Then run the installer:
+
 ```powershell
 irm https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.ps1 | iex
+```
+
+Alternatively, bypass the policy for a single installation:
+
+```powershell
+irm https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.ps1 | powershell -ExecutionPolicy Bypass -
 ```
 
 ## Updating
