@@ -79,8 +79,10 @@ update_repository() {
     fi
     
     print_status "New updates available. Updating..."
-    git pull origin main || {
-        print_error "Failed to pull updates"
+    
+    # force update to match remote
+    git reset --hard origin/main || {
+        print_error "Failed to update repository"
         exit 1
     }
     

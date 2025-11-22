@@ -34,25 +34,35 @@ class SelfManagementService:
                 "  curl -fsSL https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.sh | bash"
             )
     
-    def _get_local_commit(self) -> Optional[str]:
-        """get the current local commit SHA."""
+    def _get_local_commit_info(self) -> Optional[Dict[str, Any]]:
+        """get the current local commit SHA and date."""
         if not self._is_standard_install:
             return None
         
         try:
-            result = subprocess.run(
+            # get sha
+            sha = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"],
                 cwd=self.INSTALL_DIR,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return result.stdout.strip()
-        except subprocess.CalledProcessError:
+                text=True
+            ).strip()
+            
+            # get date (ISO 8601 format)
+            date_str = subprocess.check_output(
+                ["git", "show", "-s", "--format=%cI", "HEAD"],
+                cwd=self.INSTALL_DIR,
+                text=True
+            ).strip()
+            
+            return {
+                "sha": sha,
+                "date": datetime.fromisoformat(date_str)
+            }
+        except (subprocess.CalledProcessError, ValueError):
             return None
     
-    def _get_remote_commit(self) -> Optional[str]:
-        """get the latest commit SHA from GitHub."""
+    def _get_remote_commit_info(self) -> Optional[Dict[str, Any]]:
+        """get the latest commit info from GitHub."""
         try:
             response = httpx.get(
                 "https://api.github.com/repos/Astral1119/formulary/commits/main",
@@ -60,8 +70,11 @@ class SelfManagementService:
             )
             response.raise_for_status()
             data = response.json()
-            return data.get("sha")
-        except (httpx.HTTPError, httpx.TimeoutException, KeyError):
+            return {
+                "sha": data.get("sha"),
+                "date": datetime.fromisoformat(data["commit"]["committer"]["date"].replace("Z", "+00:00"))
+            }
+        except (httpx.HTTPError, httpx.TimeoutException, KeyError, ValueError):
             return None
     
     def _load_cache(self) -> Optional[Dict[str, Any]]:
@@ -124,13 +137,28 @@ class SelfManagementService:
                 "cached": False
             }
         
-        local = self._get_local_commit()
-        remote = self._get_remote_commit()
+        local_info = self._get_local_commit_info()
+        remote_info = self._get_remote_commit_info()
+        
+        if not local_info or not remote_info:
+            return {
+                "update_available": False,
+                "local_commit": local_info["sha"] if local_info else None,
+                "remote_commit": remote_info["sha"] if remote_info else None,
+                "cached": False
+            }
+            
+        # check if remote is newer than local
+        # add a small buffer (e.g. 1 minute) to avoid clock skew issues
+        update_available = (
+            local_info["sha"] != remote_info["sha"] and 
+            remote_info["date"] > local_info["date"]
+        )
         
         result = {
-            "update_available": bool(local and remote and local != remote),
-            "local_commit": local,
-            "remote_commit": remote,
+            "update_available": update_available,
+            "local_commit": local_info["sha"],
+            "remote_commit": remote_info["sha"],
             "cached": False
         }
         
