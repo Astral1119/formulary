@@ -192,7 +192,7 @@ install_playwright() {
     echo "  1) Chromium (default, recommended)"
     echo "  2) Firefox"
     echo ""
-    read -p "Enter choice [1-2] (default: 1): " -n 1 -r
+    read -p "Enter choice [1-2] (default: 1): " -n 1 -r < /dev/tty
     echo
     
     BROWSER="chromium"
