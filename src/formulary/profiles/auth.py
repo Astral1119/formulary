@@ -79,8 +79,8 @@ async def authenticate_profile(profile_path: Path) -> str:
 
 def _get_browser_choice() -> str:
     """Read browser choice from installation config."""
-    from ..config import get_config_dir
-    browser_file = get_config_dir() / "browser_choice"
+    from ..config import CONFIG_DIR
+    browser_file = CONFIG_DIR / "browser_choice"
     if browser_file.exists():
         return browser_file.read_text().strip()
     return "chromium"  # default
