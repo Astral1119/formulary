@@ -97,13 +97,16 @@ function Check-Uv {
         }
         
         # Add to PATH for this session
-        $CargoPath = "$HOME\.cargo\bin"
+        $CargoPath = Join-Path $HOME ".cargo\bin"
         $Env:PATH = "$Env:PATH;$CargoPath"
         
         # Verify installation by checking both PATH and explicit binary location
-        $UvExe = "$CargoPath\uv.exe"
-        if (-not (Get-Command uv -ErrorAction SilentlyContinue) -and -not (Test-Path $UvExe)) {
+        $UvExe = Join-Path $CargoPath "uv.exe"
+        $UvFound = (Get-Command uv -ErrorAction SilentlyContinue) -or (Test-Path $UvExe)
+        
+        if (-not $UvFound) {
             Print-Error "Failed to verify uv installation"
+            Print-Error "Expected location: $UvExe"
             exit 1
         }
         Print-Success "uv installed successfully"
@@ -170,7 +173,7 @@ function Install-Dependencies {
     # Use uv command if available, otherwise use explicit path
     $UvCmd = "uv"
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-        $UvExe = "$HOME\.cargo\bin\uv.exe"
+        $UvExe = Join-Path (Join-Path $HOME ".cargo\bin") "uv.exe"
         if (Test-Path $UvExe) {
             $UvCmd = $UvExe
         }
@@ -196,7 +199,7 @@ function Install-Playwright {
     # Use uv command if available, otherwise use explicit path
     $UvCmd = "uv"
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-        $UvExe = "$HOME\.cargo\bin\uv.exe"
+        $UvExe = Join-Path (Join-Path $HOME ".cargo\bin") "uv.exe"
         if (Test-Path $UvExe) {
             $UvCmd = $UvExe
         }

@@ -43,12 +43,6 @@ Then run the installer:
 irm https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.ps1 | iex
 ```
 
-Alternatively, bypass the policy for a single installation:
-
-```powershell
-irm https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.ps1 | powershell -ExecutionPolicy Bypass -
-```
-
 ## Updating
 
 To update Formulary to the latest version:
