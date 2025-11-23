@@ -21,16 +21,6 @@ class MetadataManager:
         
         content = definition[2:-1]  # remove ={ and }
         
-        # split by semicolon for rows, but we need to be careful about quoted semicolons
-        # since we control the format, we can assume standard CSV-like behavior but with ; as row delimiter
-        # actually, the internal format is effectively CSV where rows are ; separated and cols are , separated
-        # but standard CSV parsers don't handle ; as newline.
-        
-        # let's try a simpler approach:
-        # 1. The content is a sequence of quoted strings separated by , or ;
-        # 2. We can iterate and track quotes to split correctly
-        
-        # improved parsing to handle empty strings correctly
         rows = []
         current_row = []
         current_token = []
