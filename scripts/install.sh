@@ -303,8 +303,9 @@ main() {
     echo ""
     echo "Quick start:"
     echo "  1. Restart your shell or run: source ~/.${SHELL##*/}rc"
-    echo "  2. Initialize a project: formulary init \"https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit\""
-    echo "  3. Install packages: formulary install hash"
+    echo "  2. Create a profile: formulary profile add YOUR_NAME_HERE"
+    echo "  3. Initialize a project: formulary init \"https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit\""
+    echo "  4. Install packages: formulary install hash"
     echo ""
     echo "For more information, visit: https://github.com/Astral1119/formulary"
 }
