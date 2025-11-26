@@ -8,6 +8,7 @@ from ..resolution.resolver import Resolver
 from ..bundling.packager import Packager
 from ..domain.models import Dependency, Lockfile, Package, PackageLock
 from ..utils.hash import hash_function_object
+from ..ui.progress import ProgressManager
 
 
 class UpgradeService:
@@ -19,7 +20,8 @@ class UpgradeService:
         registry_client: RegistryClient,
         cache: LocalCache,
         resolver: Resolver,
-        packager: Packager
+        packager: Packager,
+        progress_manager: ProgressManager = None
     ):
         self.sheet_client = sheet_client
         self.registry_client = registry_client
@@ -27,6 +29,7 @@ class UpgradeService:
         self.resolver = resolver
         self.packager = packager
         self.metadata_manager = MetadataManager(sheet_client)
+        self.progress_manager = progress_manager or ProgressManager()
     
     async def upgrade(self, packages: Optional[List[str]] = None):
         """
@@ -69,7 +72,8 @@ class UpgradeService:
             
             # 5. resolve dependencies
             deps = [Dependency(name=pkg) for pkg in packages_to_upgrade]
-            resolved_packages = self.resolver.resolve(deps)
+            with self.progress_manager.spinner("checking for updates"):
+                resolved_packages = self.resolver.resolve(deps)
             
             # 6. find upgrades
             for pkg in resolved_packages:
@@ -88,10 +92,29 @@ class UpgradeService:
             all_functions = {}
             new_lockfile = Lockfile()
             
+            # identify packages needing download
+            packages_to_download = [
+                pkg for pkg in resolved_packages 
+                if not self.cache.has_artifact(pkg.name, pkg.version)
+            ]
+            
+            if packages_to_download:
+                with self.progress_manager.download_progress() as progress:
+                    for pkg in packages_to_download:
+                        target_path = self.cache.get_artifact_path(pkg.name, pkg.version)
+                        task_id = progress.add_task(f"downloading {pkg.name}@{pkg.version}", total=None)
+                        self.registry_client.download_package(
+                            pkg.name, 
+                            pkg.version, 
+                            target_path,
+                            progress,
+                            task_id
+                        )
+
             for pkg in resolved_packages:
-                # check cache
+                # check cache (should be there now)
                 if not self.cache.has_artifact(pkg.name, pkg.version):
-                    # download
+                    # fallback if download failed or logic error
                     target_path = self.cache.get_artifact_path(pkg.name, pkg.version)
                     self.registry_client.download_package(pkg.name, pkg.version, target_path)
                 
@@ -114,11 +137,15 @@ class UpgradeService:
             # get current functions to compare
             current_functions = await self.sheet_client.get_named_functions()
             
-            for fname, new_func in all_functions.items():
-                if fname in current_functions:
-                    # update existing function
-                    await self.sheet_client.delete_function(fname)
-                await self.sheet_client.create_function(fname, new_func.definition)
+            total_functions = len(all_functions)
+            with self.progress_manager.task_progress("updating functions", total=total_functions) as (progress, task_id):
+                for fname, new_func in all_functions.items():
+                    if fname in current_functions:
+                        # update existing function
+                        await self.sheet_client.delete_function(fname)
+                    await self.sheet_client.create_function(fname, new_func.definition)
+                    if progress and task_id is not None:
+                        progress.advance(task_id, 1)
             
             # 9. save updated metadata and lockfile
             await self.metadata_manager.set_lockfile(new_lockfile)

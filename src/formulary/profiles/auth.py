@@ -10,7 +10,9 @@ class AuthenticationError(Exception):
     pass
 
 
-async def authenticate_profile(profile_path: Path) -> str:
+from typing import Tuple, List, Dict, Any
+
+async def authenticate_profile(profile_path: Path) -> Tuple[str, str, List[Dict[str, Any]]]:
     """
     open browser and authenticate with Google.
     
@@ -18,7 +20,7 @@ async def authenticate_profile(profile_path: Path) -> str:
         profile_path: directory to store Playwright profile data
         
     returns:
-        authenticated email address
+        tuple of (email, user_agent, cookies)
         
     raises:
         AuthenticationError: if auth fails or is cancelled
@@ -63,9 +65,15 @@ async def authenticate_profile(profile_path: Path) -> str:
             # try to extract email from the page
             email = await _extract_email(page)
             
+            # capture user agent
+            user_agent = await page.evaluate("navigator.userAgent")
+            
+            # capture cookies
+            cookies = await driver.get_cookies()
+            
             console.print(f"[green]✓[/green] Authenticated as [cyan]{email}[/cyan]")
             
-            return email
+            return email, user_agent, cookies
             
         except Exception as e:
             raise AuthenticationError(

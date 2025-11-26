@@ -67,7 +67,7 @@ class ProfileManager:
         try:
             # authenticate with Google (opens browser)
             import asyncio
-            email = asyncio.run(authenticate_profile(profile_path))
+            email, user_agent, cookies = asyncio.run(authenticate_profile(profile_path))
             
             # create profile info
             now = datetime.now().isoformat()
@@ -75,6 +75,8 @@ class ProfileManager:
                 alias=alias,
                 path=f"profiles/{alias}",
                 email=email,
+                user_agent=user_agent,
+                cookies=cookies,
                 created=now,
                 last_used=now
             )
@@ -170,15 +172,49 @@ class ProfileManager:
         self.store.set_active(alias)
         console.print(f"[green]✓[/green] Switched to profile '{alias}'")
     
-    def get_profile_path(self, alias: str) -> Path:
-        """get Playwright profile path for alias."""
+    def get_profile_path(self, alias: str, headless: bool = False) -> Path:
+        """
+        get Playwright profile path for alias.
+        
+        args:
+            alias: profile alias
+            headless: if True, return a separate path for headless execution
+                     to avoid Keychain locking issues on macOS.
+        """
         data = self.store.load()
         
         if alias not in data.profiles:
             raise ProfileError(f"Profile '{alias}' not found")
         
-        return self.config_dir / data.profiles[alias].path
+        path = self.config_dir / data.profiles[alias].path
+        
+        if headless:
+            # use a separate directory for headless execution
+            # this avoids "headless_shell wants to use your confidential information"
+            # prompts on macOS because we won't touch the headed profile's Keychain-encrypted data.
+            # we will inject cookies into this clean profile instead.
+            return path.parent / f"{path.name}_headless"
+            
+        return path
+
+    def get_user_agent(self, alias: str) -> Optional[str]:
+        """get User-Agent string for alias."""
+        data = self.store.load()
+        
+        if alias not in data.profiles:
+            raise ProfileError(f"Profile '{alias}' not found")
+        
+        return data.profiles[alias].user_agent
     
+    def get_cookies(self, alias: str) -> Optional[List]:
+        """get cookies for alias."""
+        data = self.store.load()
+        
+        if alias not in data.profiles:
+            raise ProfileError(f"Profile '{alias}' not found")
+        
+        return data.profiles[alias].cookies
+
     def ensure_active_profile(self) -> str:
         """
         ensure active profile exists.

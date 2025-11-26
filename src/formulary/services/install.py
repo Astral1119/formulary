@@ -9,6 +9,7 @@ from ..resolution.resolver import Resolver
 from ..bundling.packager import Packager
 from ..domain.models import Lockfile, PackageLock, Dependency
 from ..utils.hash import hash_function_object
+from ..ui.progress import ProgressManager
 import hashlib
 
 class InstallService:
@@ -18,7 +19,8 @@ class InstallService:
         registry_client: RegistryClient,
         cache: LocalCache,
         resolver: Resolver,
-        packager: Packager
+        packager: Packager,
+        progress_manager: ProgressManager = None
     ):
         self.sheet_client = sheet_client
         self.registry_client = registry_client
@@ -26,6 +28,7 @@ class InstallService:
         self.resolver = resolver
         self.packager = packager
         self.metadata_manager = MetadataManager(sheet_client)
+        self.progress_manager = progress_manager or ProgressManager()
 
     async def install(self, packages: List[str], local: bool = False, resolutions: Dict[str, Dict[str, str]] = None):
         """
@@ -91,7 +94,9 @@ class InstallService:
                     else:
                         requirements.append(Dependency(name=d))
 
-            resolved_packages = self.resolver.resolve(requirements)
+            # resolve dependencies with progress spinner
+            with self.progress_manager.spinner("resolving dependencies"):
+                resolved_packages = self.resolver.resolve(requirements)
             
             # 4. download, extract, and refactor
             all_functions = {}
@@ -113,18 +118,34 @@ class InstallService:
                     "is_local": True
                 })
 
-            # remote packages - download in parallel
+
+            # remote packages - download in parallel with progress
             download_tasks = []
-            for pkg in resolved_packages:
-                if pkg.name in local_packages: continue
-                if not self.cache.has_artifact(pkg.name, pkg.version):
-                    target_path = self.cache.get_artifact_path(pkg.name, pkg.version)
-                    # create async task for download
-                    download_tasks.append(self._download_package_async(pkg.name, pkg.version, target_path))
+            task_ids = []
             
-            # execute all downloads in parallel
-            if download_tasks:
-                await asyncio.gather(*download_tasks)
+            # determine which packages need downloading
+            packages_to_download = []
+            for pkg in resolved_packages:
+                if pkg.name in local_packages: 
+                    continue
+                if not self.cache.has_artifact(pkg.name, pkg.version):
+                    packages_to_download.append(pkg)
+            
+            # execute all downloads in parallel with progress tracking
+            if packages_to_download:
+                with self.progress_manager.download_progress() as progress:
+                    for pkg in packages_to_download:
+                        target_path = self.cache.get_artifact_path(pkg.name, pkg.version)
+                        task_id = progress.add_task(
+                            f"downloading {pkg.name}@{pkg.version}",
+                            total=None  # will be set when we get content-length
+                        )
+                        task_ids.append(task_id)
+                        download_tasks.append(
+                            self._download_package_async(pkg.name, pkg.version, target_path, progress, task_id)
+                        )
+                    
+                    await asyncio.gather(*download_tasks)
             
             # now add to packages_to_install list
             for pkg in resolved_packages:
@@ -232,11 +253,15 @@ class InstallService:
                             await self.sheet_client.delete_function(fname)
 
             # create/update functions (reuse cached current_functions)
-            for fname, func in all_functions.items():
-                if fname in existing_func_names:
-                    await self.sheet_client.update_function(func)
-                else:
-                    await self.sheet_client.create_function(func)
+            total_functions = len(all_functions)
+            with self.progress_manager.task_progress("installing functions", total=total_functions) as (progress, task_id):
+                for fname, func in all_functions.items():
+                    if fname in existing_func_names:
+                        await self.sheet_client.update_function(func)
+                    else:
+                        await self.sheet_client.create_function(func)
+                    if progress and task_id is not None:
+                        progress.advance(task_id, 1)
             
             # 6. update project metadata
             await self.metadata_manager.set_project_metadata(project_metadata)
@@ -244,8 +269,16 @@ class InstallService:
         finally:
             await self.sheet_client.close()
     
-    async def _download_package_async(self, name: str, version: str, target_path: Path):
-        """Download package asynchronously to enable parallel downloads."""
-        # Run sync download in executor to avoid blocking
+    async def _download_package_async(self, name: str, version: str, target_path: Path, progress=None, task_id=None):
+        """download package asynchronously to enable parallel downloads."""
+        # run sync download in executor to avoid blocking
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.registry_client.download_package, name, version, target_path)
+        await loop.run_in_executor(
+            None, 
+            self.registry_client.download_package, 
+            name, 
+            version, 
+            target_path,
+            progress,
+            task_id
+        )

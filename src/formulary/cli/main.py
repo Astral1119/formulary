@@ -20,6 +20,7 @@ from ..services.dev import DevService
 from ..services.info import InfoService
 from ..services.self import SelfManagementService
 from ..profiles import ProfileManager, ProfileError
+from ..ui.progress import ProgressManager
 from .profile_commands import app as profile_app
 
 app = typer.Typer()
@@ -42,30 +43,52 @@ def get_install_service(url: str, headless: bool = True) -> InstallService:
     # get active profile
     profile_manager = ProfileManager(CONFIG_DIR)
     active_profile = profile_manager.ensure_active_profile()
-    profile_path = profile_manager.get_profile_path(active_profile)
+    # use separate profile for headless to avoid keychain issues
+    profile_path = profile_manager.get_profile_path(active_profile, headless=headless)
+    user_agent = profile_manager.get_user_agent(active_profile)
+    cookies = profile_manager.get_cookies(active_profile)
     
-    driver = PlaywrightDriver(headless=headless, user_data_dir=profile_path, browser=get_browser_choice())
-    sheet_client = SheetClient(driver, url)
+    driver = PlaywrightDriver(
+        headless=headless, 
+        user_data_dir=profile_path, 
+        browser=get_browser_choice(),
+        user_agent=user_agent,
+        cookies=cookies
+    )
+    progress_manager = ProgressManager(console)
+    sheet_client = SheetClient(driver, url, progress_manager)
     registry_client = GitHubRegistry(REGISTRY_URL)
     cache = LocalCache(CONFIG_DIR / "cache")
     resolver = Resolver(registry_client)
     packager = Packager()
-    return InstallService(sheet_client, registry_client, cache, resolver, packager)
+    # progress_manager already created above
+    return InstallService(sheet_client, registry_client, cache, resolver, packager, progress_manager)
 
 def get_dev_service(url: str, headless: bool = True) -> DevService:
     # get active profile
     profile_manager = ProfileManager(CONFIG_DIR)
     active_profile = profile_manager.ensure_active_profile()
-    profile_path = profile_manager.get_profile_path(active_profile)
+    # use separate profile for headless to avoid keychain issues
+    profile_path = profile_manager.get_profile_path(active_profile, headless=headless)
+    user_agent = profile_manager.get_user_agent(active_profile)
+    cookies = profile_manager.get_cookies(active_profile)
     
-    driver = PlaywrightDriver(headless=headless, user_data_dir=profile_path, browser=get_browser_choice())
-    sheet_client = SheetClient(driver, url)
+    driver = PlaywrightDriver(
+        headless=headless, 
+        user_data_dir=profile_path, 
+        browser=get_browser_choice(),
+        user_agent=user_agent,
+        cookies=cookies
+    )
+    progress_manager = ProgressManager(console)
+    sheet_client = SheetClient(driver, url, progress_manager)
     registry_client = GitHubRegistry(REGISTRY_URL)
     cache = LocalCache(CONFIG_DIR / "cache")
     resolver = Resolver(registry_client)
     packager = Packager()
-    install_service = InstallService(sheet_client, registry_client, cache, resolver, packager)
-    return DevService(sheet_client, registry_client, install_service, packager)
+    # progress_manager already created above
+    install_service = InstallService(sheet_client, registry_client, cache, resolver, packager, progress_manager)
+    return DevService(sheet_client, registry_client, install_service, packager, progress_manager)
 
 def get_info_service() -> InfoService:
     registry_client = GitHubRegistry(REGISTRY_URL)
@@ -96,19 +119,29 @@ def main_callback(ctx: typer.Context):
 def init(url: str, name: str = None, force: bool = False, interactive: bool = True, headed: bool = False):
     """initialize a new project with the given Google Sheet URL."""
     set_sheet_url(url)
+    headless = not headed
     
     # check if metadata already exists first
     # ensure active profile exists
     profile_manager = ProfileManager(CONFIG_DIR)
     try:
         active_profile = profile_manager.ensure_active_profile()
-        profile_path = profile_manager.get_profile_path(active_profile)
+        # use separate profile for headless to avoid keychain issues
+        profile_path = profile_manager.get_profile_path(active_profile, headless=headless)
+        user_agent = profile_manager.get_user_agent(active_profile)
+        cookies = profile_manager.get_cookies(active_profile)
     except ProfileError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
     
-    driver = PlaywrightDriver(headless=not headed, user_data_dir=profile_path, browser=get_browser_choice())
-    sheet_client = SheetClient(driver, url)
+    driver = PlaywrightDriver(
+        headless=not headed, 
+        user_data_dir=profile_path, 
+        browser=get_browser_choice(),
+        user_agent=user_agent,
+        cookies=cookies
+    )
+    sheet_client = SheetClient(driver, url, ProgressManager(console))
     
     # step 1: check if metadata exists
     async def check_existing():
@@ -385,19 +418,30 @@ def remove(packages: list[str], force: bool = False, headed: bool = False):
     if not url:
         console.print("[red]No project initialized. Run 'init' first.[/red]")
         raise typer.Exit(code=1)
+    headless = not headed
 
     # ensure active profile exists
     profile_manager = ProfileManager(CONFIG_DIR)
     try:
         active_profile = profile_manager.ensure_active_profile()
-        profile_path = profile_manager.get_profile_path(active_profile)
+        # use separate profile for headless to avoid keychain issues
+        profile_path = profile_manager.get_profile_path(active_profile, headless=headless)
+        user_agent = profile_manager.get_user_agent(active_profile)
+        cookies = profile_manager.get_cookies(active_profile)
     except ProfileError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
     
-    driver = PlaywrightDriver(headless=not headed, user_data_dir=profile_path, browser=get_browser_choice())
-    sheet_client = SheetClient(driver, url)
-    service = RemoveService(sheet_client)
+    driver = PlaywrightDriver(
+        headless=not headed, 
+        user_data_dir=profile_path, 
+        browser=get_browser_choice(),
+        user_agent=user_agent,
+        cookies=cookies
+    )
+    progress_manager = ProgressManager(console)
+    sheet_client = SheetClient(driver, url, progress_manager)
+    service = RemoveService(sheet_client, progress_manager)
     
     try:
         asyncio.run(service.remove(packages, force=force))
@@ -422,7 +466,8 @@ def upgrade(packages: list[str] = None, headed: bool = False):
         service.registry_client,
         service.cache,
         service.resolver,
-        service.packager
+        service.packager,
+        service.progress_manager
     )
     
     try:
@@ -444,20 +489,31 @@ def pack(output: str = "./dist", headed: bool = False):
     if not url:
         console.print("[red]No sheet URL configured. Run 'formulary init' first.[/red]")
         raise typer.Exit(code=1)
+    headless = not headed
     
     # ensure active profile exists
     profile_manager = ProfileManager(CONFIG_DIR)
     try:
         active_profile = profile_manager.ensure_active_profile()
-        profile_path = profile_manager.get_profile_path(active_profile)
+        # use separate profile for headless to avoid keychain issues
+        profile_path = profile_manager.get_profile_path(active_profile, headless=headless)
+        user_agent = profile_manager.get_user_agent(active_profile)
+        cookies = profile_manager.get_cookies(active_profile)
     except ProfileError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
     
-    driver = PlaywrightDriver(headless=not headed, user_data_dir=profile_path, browser=get_browser_choice())
-    sheet_client = SheetClient(driver, url)
+    driver = PlaywrightDriver(
+        headless=not headed, 
+        user_data_dir=profile_path, 
+        browser=get_browser_choice(),
+        user_agent=user_agent,
+        cookies=cookies
+    )
+    progress_manager = ProgressManager(console)
+    sheet_client = SheetClient(driver, url, progress_manager)
     packager = Packager()
-    service = PublishService(sheet_client, packager)
+    service = PublishService(sheet_client, packager, progress_manager=progress_manager)
     
     try:
         package_path = asyncio.run(service.pack(Path(output)))
@@ -477,20 +533,31 @@ def publish(dry_run: bool = False, headed: bool = False):
     if not url:
         console.print("[red]No sheet URL configured. Run 'formulary init' first.[/red]")
         raise typer.Exit(code=1)
+    headless = not headed
     
     # ensure active profile exists
     profile_manager = ProfileManager(CONFIG_DIR)
     try:
         active_profile = profile_manager.ensure_active_profile()
-        profile_path = profile_manager.get_profile_path(active_profile)
+        # use separate profile for headless to avoid keychain issues
+        profile_path = profile_manager.get_profile_path(active_profile, headless=headless)
+        user_agent = profile_manager.get_user_agent(active_profile)
+        cookies = profile_manager.get_cookies(active_profile)
     except ProfileError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
     
-    driver = PlaywrightDriver(headless=not headed, user_data_dir=profile_path, browser=get_browser_choice())
-    sheet_client = SheetClient(driver, url)
+    driver = PlaywrightDriver(
+        headless=not headed, 
+        user_data_dir=profile_path, 
+        browser=get_browser_choice(),
+        user_agent=user_agent,
+        cookies=cookies
+    )
+    progress_manager = ProgressManager(console)
+    sheet_client = SheetClient(driver, url, progress_manager)
     packager = Packager()
-    service = PublishService(sheet_client, packager)
+    service = PublishService(sheet_client, packager, progress_manager=progress_manager)
     
     try:
         if dry_run:

@@ -7,11 +7,15 @@ class PlaywrightDriver:
         self, 
         headless: bool = True, 
         user_data_dir: Optional[Path] = None,
-        browser: str = "chromium"
+        browser: str = "chromium",
+        user_agent: Optional[str] = None,
+        cookies: Optional[list] = None
     ):
         self.headless = headless
         self.user_data_dir = user_data_dir  # must be provided by caller now
         self.browser = browser
+        self.user_agent = user_agent
+        self.cookies = cookies
         self._playwright: Optional[Playwright] = None
         self._context: Optional[BrowserContext] = None
         self._page: Optional[Page] = None
@@ -31,13 +35,19 @@ class PlaywrightDriver:
         self._context = await browser_type.launch_persistent_context(
             user_data_dir=str(self.user_data_dir),
             headless=self.headless,
+            user_agent=self.user_agent,
             args=[
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--disable-blink-features=AutomationControlled",
+                "--password-store=basic",
+                "--use-mock-keychain",
             ],
             viewport={"width": 1400, "height": 900},
         )
+        
+        if self.cookies:
+            await self._context.add_cookies(self.cookies)
         
         # get the first page or create one
         if self._context.pages:
@@ -58,3 +68,9 @@ class PlaywrightDriver:
         if self._page is None:
             raise RuntimeError("Driver not started. Call start() first.")
         return self._page
+
+    async def get_cookies(self):
+        """get all cookies from current context."""
+        if not self._context:
+            return []
+        return await self._context.cookies()

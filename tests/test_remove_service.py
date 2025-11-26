@@ -42,6 +42,14 @@ class TestRemoveService:
                 functions=["PKG_A_FUNC"]
             )
             manager.get_lockfile = AsyncMock(return_value=lockfile)
+            manager.get_all_metadata = AsyncMock(return_value=(
+                {
+                    "name": "test-project",
+                    "version": "1.0.0",
+                    "dependencies": ["hash", "pkg-a>=1.0.0"]
+                },
+                lockfile
+            ))
             manager.set_project_metadata = AsyncMock()
             manager.set_lockfile = AsyncMock()
             
@@ -78,6 +86,7 @@ class TestRemoveService:
     def test_remove_no_project(self, service, mock_metadata_manager):
         """test removing when no project is initialized."""
         mock_metadata_manager.get_project_metadata = AsyncMock(return_value=None)
+        mock_metadata_manager.get_all_metadata = AsyncMock(return_value=(None, None))
         
         with pytest.raises(ValueError, match="No project initialized"):
             asyncio.run(service.remove(["hash"]))
