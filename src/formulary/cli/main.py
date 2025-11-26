@@ -32,13 +32,6 @@ app.add_typer(profile_app, name="profile", help="Manage authentication profiles"
 # TODO: make this configurable
 REGISTRY_URL = "https://raw.githubusercontent.com/Astral1119/formulary-registry/main"
 
-def get_browser_choice() -> str:
-    """Read browser choice from installation config."""
-    browser_file = CONFIG_DIR / "browser_choice"
-    if browser_file.exists():
-        return browser_file.read_text().strip()
-    return "chromium"  # default
-
 def get_install_service(url: str, headless: bool = True) -> InstallService:
     # get active profile
     profile_manager = ProfileManager(CONFIG_DIR)
@@ -50,8 +43,7 @@ def get_install_service(url: str, headless: bool = True) -> InstallService:
     
     driver = PlaywrightDriver(
         headless=headless, 
-        user_data_dir=profile_path, 
-        browser=get_browser_choice(),
+        user_data_dir=profile_path,
         user_agent=user_agent,
         cookies=cookies
     )
@@ -75,8 +67,7 @@ def get_dev_service(url: str, headless: bool = True) -> DevService:
     
     driver = PlaywrightDriver(
         headless=headless, 
-        user_data_dir=profile_path, 
-        browser=get_browser_choice(),
+        user_data_dir=profile_path,
         user_agent=user_agent,
         cookies=cookies
     )
@@ -136,8 +127,7 @@ def init(url: str, name: str = None, force: bool = False, interactive: bool = Tr
     
     driver = PlaywrightDriver(
         headless=not headed, 
-        user_data_dir=profile_path, 
-        browser=get_browser_choice(),
+        user_data_dir=profile_path,
         user_agent=user_agent,
         cookies=cookies
     )
@@ -434,8 +424,7 @@ def remove(packages: list[str], force: bool = False, headed: bool = False):
     
     driver = PlaywrightDriver(
         headless=not headed, 
-        user_data_dir=profile_path, 
-        browser=get_browser_choice(),
+        user_data_dir=profile_path,
         user_agent=user_agent,
         cookies=cookies
     )
@@ -505,8 +494,7 @@ def pack(output: str = "./dist", headed: bool = False):
     
     driver = PlaywrightDriver(
         headless=not headed, 
-        user_data_dir=profile_path, 
-        browser=get_browser_choice(),
+        user_data_dir=profile_path,
         user_agent=user_agent,
         cookies=cookies
     )
@@ -549,8 +537,7 @@ def publish(dry_run: bool = False, headed: bool = False):
     
     driver = PlaywrightDriver(
         headless=not headed, 
-        user_data_dir=profile_path, 
-        browser=get_browser_choice(),
+        user_data_dir=profile_path,
         user_agent=user_agent,
         cookies=cookies
     )

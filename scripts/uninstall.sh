@@ -108,11 +108,6 @@ remove_user_data() {
         DATA_EXISTS=true
     fi
     
-    if [ -f "$INSTALL_DIR/browser_choice" ]; then
-        echo "  • Browser choice: $INSTALL_DIR/browser_choice"
-        DATA_EXISTS=true
-    fi
-    
     if [ -d "$INSTALL_DIR/cache" ]; then
         CACHE_SIZE=$(du -sh "$INSTALL_DIR/cache" 2>/dev/null | cut -f1 || echo "unknown")
         echo "  • Package cache: $INSTALL_DIR/cache ($CACHE_SIZE)"
@@ -129,7 +124,6 @@ remove_user_data() {
             [ -f "$INSTALL_DIR/config.toml" ] && rm -f "$INSTALL_DIR/config.toml"
             [ -d "$INSTALL_DIR/profiles" ] && rm -rf "$INSTALL_DIR/profiles"
             [ -f "$INSTALL_DIR/profiles.json" ] && rm -f "$INSTALL_DIR/profiles.json"
-            [ -f "$INSTALL_DIR/browser_choice" ] && rm -f "$INSTALL_DIR/browser_choice"
             [ -d "$INSTALL_DIR/cache" ] && rm -rf "$INSTALL_DIR/cache"
             
             # remove the entire directory if it's empty

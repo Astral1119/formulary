@@ -228,18 +228,8 @@ function Install-Playwright {
         }
     }
     
-    # Ask user which browser to use
-    Write-Host ""
-    Write-Host "Which browser would you like to use?"
-    Write-Host "  1) Chromium (default, recommended)"
-    Write-Host "  2) Firefox"
-    Write-Host ""
-    $Choice = Read-Host "Enter choice [1-2] (default: 1)"
-    
+    # Install chromium browser
     $Browser = "chromium"
-    if ($Choice -eq "2") {
-        $Browser = "firefox"
-    }
     
     try {
         & $UvCmd run playwright install $Browser
@@ -249,9 +239,6 @@ function Install-Playwright {
         Print-Warning "You may need to run 'formulary-install-browsers' later"
         return
     }
-    
-    # Save browser choice for future use
-    "$Browser" | Out-File -FilePath "$InstallDir\browser_choice" -Encoding ASCII
     
     Print-Success "Playwright browsers installed successfully"
 }
@@ -275,14 +262,8 @@ function Create-Wrappers {
     # Create formulary-install-browsers.cmd
     $BrowserCmd = "@echo off`r`n" +
     "set FORMULARY_DIR=$InstallDir\repo`r`n" +
-    "set BROWSER_FILE=$InstallDir\browser_choice`r`n" +
     "cd /d %FORMULARY_DIR%`r`n" +
-    "if exist %BROWSER_FILE% (`r`n" +
-    "    set /p BROWSER=<%BROWSER_FILE%`r`n" +
-    ") else (`r`n" +
-    "    set BROWSER=chromium`r`n" +
-    ")`r`n" +
-    "uv run playwright install %BROWSER%"
+    "uv run playwright install chromium"
                   
     $BrowserCmd | Out-File -FilePath "$BinDir\formulary-install-browsers.cmd" -Encoding ASCII
     

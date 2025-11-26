@@ -56,7 +56,6 @@ Write-Host ""
 $DataExists = $false
 if (Test-Path "$InstallDir\config.toml") { $DataExists = $true }
 if (Test-Path "$InstallDir\profiles") { $DataExists = $true }
-if (Test-Path "$InstallDir\browser_choice") { $DataExists = $true }
 if (Test-Path "$InstallDir\cache") { $DataExists = $true }
 
 if ($DataExists) {

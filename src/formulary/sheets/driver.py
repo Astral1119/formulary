@@ -7,13 +7,11 @@ class PlaywrightDriver:
         self, 
         headless: bool = True, 
         user_data_dir: Optional[Path] = None,
-        browser: str = "chromium",
         user_agent: Optional[str] = None,
         cookies: Optional[list] = None
     ):
         self.headless = headless
         self.user_data_dir = user_data_dir  # must be provided by caller now
-        self.browser = browser
         self.user_agent = user_agent
         self.cookies = cookies
         self._playwright: Optional[Playwright] = None
@@ -26,13 +24,8 @@ class PlaywrightDriver:
         
         self.user_data_dir.mkdir(parents=True, exist_ok=True)
         
-        # Select browser dynamically
-        if self.browser == "firefox":
-            browser_type = self._playwright.firefox
-        else:  # default to chromium
-            browser_type = self._playwright.chromium
-        
-        self._context = await browser_type.launch_persistent_context(
+        # use chromium browser
+        self._context = await self._playwright.chromium.launch_persistent_context(
             user_data_dir=str(self.user_data_dir),
             headless=self.headless,
             user_agent=self.user_agent,
