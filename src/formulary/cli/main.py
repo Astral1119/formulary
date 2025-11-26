@@ -110,18 +110,18 @@ def init(url: str, name: str = None, force: bool = False, interactive: bool = Tr
     driver = PlaywrightDriver(headless=not headed, user_data_dir=profile_path, browser=get_browser_choice())
     sheet_client = SheetClient(driver, url)
     
-    async def check_existing_metadata():
+    # step 1: check if metadata exists
+    async def check_existing():
         await sheet_client.connect()
         try:
             metadata_manager = MetadataManager(sheet_client)
-            existing_metadata = await metadata_manager.get_project_metadata()
-            existing_lockfile = await metadata_manager.get_lockfile()
+            existing_metadata, existing_lockfile = await metadata_manager.get_all_metadata()
             return existing_metadata or existing_lockfile
         finally:
             await sheet_client.close()
     
     try:
-        has_existing = asyncio.run(check_existing_metadata())
+        has_existing = asyncio.run(check_existing())
         if has_existing and not force:
             console.print("[yellow]Project metadata already exists in this sheet.[/yellow]")
             console.print("Use --force to overwrite existing metadata.")
@@ -132,7 +132,7 @@ def init(url: str, name: str = None, force: bool = False, interactive: bool = Tr
         console.print(f"[red]Error checking existing metadata:[/red] {e}")
         raise typer.Exit(code=1)
     
-    # interactive prompts
+    # step 2: prompt for project details (after confirming we can proceed)
     if interactive:
         from rich.prompt import Prompt, Confirm
         
@@ -205,7 +205,7 @@ def init(url: str, name: str = None, force: bool = False, interactive: bool = Tr
         homepage = None
         keywords = []
     
-    # create metadata in sheet
+    # step 3: create metadata in sheet
     async def initialize_metadata():
         await sheet_client.connect()
         try:

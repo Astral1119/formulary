@@ -29,11 +29,10 @@ class RemoveService:
         
         try:
             # 2. load current state
-            project_metadata = await self.metadata_manager.get_project_metadata()
+            project_metadata, lockfile = await self.metadata_manager.get_all_metadata()
             if not project_metadata:
                 raise ValueError("No project initialized. Run 'init' first.")
             
-            lockfile = await self.metadata_manager.get_lockfile()
             if not lockfile:
                 lockfile = Lockfile()
             

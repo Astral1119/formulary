@@ -1,5 +1,6 @@
 from typing import List, Dict
 from pathlib import Path
+import asyncio
 from ..sheets.client import SheetClient
 from ..sheets.metadata import MetadataManager
 from ..registry.client import RegistryClient
@@ -37,14 +38,14 @@ class InstallService:
         """
         resolutions = resolutions or {}
         
-        # 1. load current project metadata
+        # 1. load current project metadata and get current functions
         await self.sheet_client.connect()
         try:
-            project_metadata = await self.metadata_manager.get_project_metadata()
+            project_metadata, previous_lock = await self.metadata_manager.get_all_metadata()
             if not project_metadata:
                 project_metadata = {"name": "my-project", "version": "0.1.0", "dependencies": []}
 
-            # get current functions to check for collisions
+            # get current functions to check for collisions (cache this for later use)
             current_functions = await self.sheet_client.get_named_functions()
             existing_func_names = set(current_functions.keys())
 
@@ -96,8 +97,7 @@ class InstallService:
             all_functions = {}
             lockfile = Lockfile()
             
-            # load previous lockfile for ownership check
-            previous_lock = await self.metadata_manager.get_lockfile()
+            # load previous lockfile for ownership check (already loaded above)
             previous_packages = previous_lock.packages if previous_lock else {}
             
             packages_to_install = []
@@ -113,13 +113,22 @@ class InstallService:
                     "is_local": True
                 })
 
-            # remote packages
+            # remote packages - download in parallel
+            download_tasks = []
             for pkg in resolved_packages:
                 if pkg.name in local_packages: continue
                 if not self.cache.has_artifact(pkg.name, pkg.version):
                     target_path = self.cache.get_artifact_path(pkg.name, pkg.version)
-                    self.registry_client.download_package(pkg.name, pkg.version, target_path)
-                
+                    # create async task for download
+                    download_tasks.append(self._download_package_async(pkg.name, pkg.version, target_path))
+            
+            # execute all downloads in parallel
+            if download_tasks:
+                await asyncio.gather(*download_tasks)
+            
+            # now add to packages_to_install list
+            for pkg in resolved_packages:
+                if pkg.name in local_packages: continue
                 path = self.cache.get_artifact_path(pkg.name, pkg.version)
                 packages_to_install.append({
                     "name": pkg.name,
@@ -222,12 +231,21 @@ class InstallService:
                         if fname not in all_functions:
                             await self.sheet_client.delete_function(fname)
 
-            # create/update functions
+            # create/update functions (reuse cached current_functions)
             for fname, func in all_functions.items():
                 if fname in existing_func_names:
                     await self.sheet_client.update_function(func)
                 else:
                     await self.sheet_client.create_function(func)
             
+            # 6. update project metadata
+            await self.metadata_manager.set_project_metadata(project_metadata)
+            
         finally:
             await self.sheet_client.close()
+    
+    async def _download_package_async(self, name: str, version: str, target_path: Path):
+        """Download package asynchronously to enable parallel downloads."""
+        # Run sync download in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.registry_client.download_package, name, version, target_path)

@@ -39,9 +39,6 @@ class InfoService:
             version_metadata = self.registry_client.get_package_metadata(package_name, target_version)
             
             # get package-level metadata (description, author, license, etc.)
-            # we need to access the index directly for this
-            # gitHubRegistry has _get_index() but it's private, so we'll use a workaround
-            # actually, let's just fetch the index ourselves since it's public
             index = self.registry_client._get_index()
             pkg_data = index.get(package_name, {})
             

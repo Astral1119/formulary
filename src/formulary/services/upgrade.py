@@ -45,11 +45,10 @@ class UpgradeService:
             await self.sheet_client.connect()
             
             # 2. load current state
-            project_metadata = await self.metadata_manager.get_project_metadata()
+            project_metadata, old_lockfile = await self.metadata_manager.get_all_metadata()
             if not project_metadata:
                 raise ValueError("No project initialized. Run 'init' first.")
             
-            old_lockfile = await self.metadata_manager.get_lockfile()
             if not old_lockfile:
                 old_lockfile = Lockfile()
             

@@ -79,39 +79,32 @@ class MetadataManager:
         
         return "={" + ";".join(formatted_rows) + "}"
 
-    async def get_project_metadata(self) -> dict:
-        funcs = await self.client.get_named_functions()
+    def _parse_project_metadata(self, funcs: Dict[str, Function]) -> dict:
+        """parse project metadata from named functions dict."""
         if "__GSPROJECT__" not in funcs:
-
             return {}
         
         definition = funcs["__GSPROJECT__"].definition
-
         
         # handle legacy JSON format
         if definition.startswith('="') or definition.startswith('{'):
-
             try:
                 if definition.startswith('="'):
                     json_str = definition[2:-1].replace('""""', '"')
                     return json.loads(json_str)
                 return json.loads(definition)
             except json.JSONDecodeError as e:
-
                 pass
 
         # parse array literal
-
         rows = self._parse_array_literal(definition)
 
         if not rows or len(rows) < 2:  # need at least header and one row
-
             return {}
             
         # skip header row
         data = {}
         for i, row in enumerate(rows[1:]):
-
             if len(row) >= 2:
                 key = row[0]
                 val = row[1]
@@ -123,9 +116,13 @@ class MetadataManager:
                         data["dependencies"] = []
                 else:
                     data[key] = val
-                    
 
         return data
+
+    async def get_project_metadata(self) -> dict:
+        """Get project metadata from sheet."""
+        funcs = await self.client.get_named_functions()
+        return self._parse_project_metadata(funcs)
 
     async def set_project_metadata(self, metadata: dict):
         # convert to array literal format
@@ -161,8 +158,8 @@ class MetadataManager:
         # use update to avoid breaking references
         await self.client.update_function(func)
 
-    async def get_lockfile(self) -> Optional[Lockfile]:
-        funcs = await self.client.get_named_functions()
+    def _parse_lockfile(self, funcs: Dict[str, Function]) -> Optional[Lockfile]:
+        """Parse lockfile from named functions dict."""
         if "__LOCK__" not in funcs:
             return None
         
@@ -199,6 +196,20 @@ class MetadataManager:
                 )
                 
         return lockfile
+
+    async def get_lockfile(self) -> Optional[Lockfile]:
+        """Get lockfile from sheet."""
+        funcs = await self.client.get_named_functions()
+        return self._parse_lockfile(funcs)
+
+    async def get_all_metadata(self) -> tuple[dict, Optional[Lockfile]]:
+        """Get both project metadata and lockfile in a single call.
+        
+        Returns:
+            Tuple of (project_metadata, lockfile)
+        """
+        funcs = await self.client.get_named_functions()
+        return (self._parse_project_metadata(funcs), self._parse_lockfile(funcs))
 
     async def set_lockfile(self, lockfile: Lockfile):
         # convert to array literal format

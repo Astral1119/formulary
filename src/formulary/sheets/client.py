@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set
+from typing import Dict, Optional
 import logging
 from .driver import PlaywrightDriver
 from ..domain.models import Function
@@ -11,6 +11,7 @@ class SheetClient:
     def __init__(self, driver: PlaywrightDriver, url: str):
         self.driver = driver
         self.url = url
+        self._sidebar_opened = False  # track if sidebar has been opened in this session
 
     @property
     def page(self) -> Page:
@@ -29,8 +30,9 @@ class SheetClient:
 
     async def close(self):
         await self.driver.stop()
+        self._sidebar_opened = False  # reset on disconnect
 
-    async def open_named_functions_sidebar(self):
+    async def open_named_functions_sidebar(self, check_empty_state: bool = True):
         # navigate to Data > Named functions
 
         data_menu = self.page.get_by_role("menuitem", name="Data")
@@ -38,22 +40,27 @@ class SheetClient:
         await self.page.keyboard.press("k") # shortcut for named functions
         
         # wait for sidebar to appear
-        # try to detect if empty state first to avoid long timeout
-        try:
-            # quick check for empty state (200ms)
-            await self.page.wait_for_selector(".waffle-named-formulas-sidebar-list-view-zero-state-promo-wrapper", timeout=200)
-            # empty state found immediately
-            return
-        except Exception:
-            pass
+        # skip empty state check if we've already opened sidebar and user didn't request it
+        if check_empty_state and not self._sidebar_opened:
+            # try to detect if empty state first to avoid long timeout
+            try:
+                # quick check for empty state (200ms)
+                await self.page.wait_for_selector(".waffle-named-formulas-sidebar-list-view-zero-state-promo-wrapper", timeout=200)
+                # empty state found immediately
+                self._sidebar_opened = True
+                return
+            except Exception:
+                pass
         
         # not empty state, wait for list view
         try:
             await self.page.wait_for_selector(".waffle-named-formulas-sidebar-list-view-card", timeout=2000)
+            self._sidebar_opened = True
         except Exception:
             # might still be empty state or loading - wait a bit for footer
             try:
                 await self.page.wait_for_selector(".waffle-named-formulas-sidebar-list-view-footer-add-named-formula-button", timeout=1000)
+                self._sidebar_opened = True
             except Exception:
                 # give up, might be an issue
                 pass
@@ -87,9 +94,7 @@ class SheetClient:
             if func:
                 functions[name] = func
             
-            # go back to list view if needed (usually clicking Back button)
-            # but _get_function_details should handle returning to list or we re-open sidebar
-            await self.open_named_functions_sidebar()
+            # _get_function_details now handles returning to list view
 
         return functions
 
@@ -131,7 +136,7 @@ class SheetClient:
         await self.page.locator(".waffle-named-formulas-sidebar-list-view-card-action-menu-item-action-name").filter(has_text="Edit").click()
         
         # wait for edit form to load
-        await self.page.wait_for_timeout(500)
+        await self.page.locator("div[aria-label='Enter formula description']").filter(visible=True).first.wait_for(state="visible", timeout=2000)
         
         # extract details
         # description
@@ -185,6 +190,14 @@ class SheetClient:
         # cancel to go back
         await self.page.get_by_role("button", name="Cancel").click()
         
+        # wait for list view to reappear to ensure we are ready for next interaction
+        try:
+            await self.page.wait_for_selector('.waffle-named-formulas-sidebar-list-view-card', timeout=2000)
+        except Exception:
+            # if list view doesn't appear, we might be in trouble for the next iteration
+            # but let's hope it does.
+            pass
+        
         return Function(
             name=name,
             definition=definition,
@@ -200,13 +213,10 @@ class SheetClient:
         button = await self.page.wait_for_selector('.waffle-named-formulas-sidebar-list-view-footer-add-named-formula-button')
         await button.press('Enter')
         
-        # wait for create form to appear
-        await self.page.wait_for_timeout(500)
-        
         # fill Name
         name_input = await self.page.wait_for_selector(".waffle-named-formulas-sidebar-create-step-a-function-name-field-input")
         await name_input.fill(function.name)
-        await self.page.wait_for_timeout(100)
+        await self.page.wait_for_timeout(100)  # ensure name is processed
         
         # fill Description
         desc_inputs = await self.page.query_selector_all("div[aria-label='Enter formula description']")
@@ -215,16 +225,16 @@ class SheetClient:
             for inp in desc_inputs:
                 if await inp.is_visible():
                     await inp.fill(function.description or "")
-                    await self.page.wait_for_timeout(100)
                     break
         
         # add Arguments
-        for arg in function.arguments:
+        for i, arg in enumerate(function.arguments):
             arg_input = await self.page.query_selector("input.waffle-named-formulas-sidebar-create-step-a-new-argument-name-field-input")
             if arg_input:
                 await arg_input.fill(arg)
                 await arg_input.press("Enter")
-                await self.page.wait_for_timeout(200)  # wait for argument to be added
+                # wait for argument chip to appear
+                await self.page.locator(f".waffle-named-formulas-sidebar-argument-chip:nth-of-type({i+1})").first.wait_for(state="visible", timeout=1000)
 
         # fill Definition
         def_inputs = await self.page.query_selector_all("div[aria-label='= Write formula here']")
@@ -239,15 +249,15 @@ class SheetClient:
                             await inp.evaluate("(el, val) => el.innerText = val", function.definition)
                         except Exception as eval_error:
                             logger.error(f"both fill and evaluate failed: {eval_error}")
-                    await self.page.wait_for_timeout(100)
+                    await self.page.wait_for_timeout(200)  # ensure definition is processed
                     break
 
         # click Next using press Enter
         button = await self.page.query_selector('.waffle-named-formulas-sidebar-create-step-a-next-button')
         if button:
             await button.press('Enter')
-            # wait for UI transition
-            await self.page.wait_for_timeout(500)
+            # wait for Step B form to appear
+            await self.page.locator('.waffle-named-formulas-sidebar-create-step-b-named-formula-summary-message').filter(visible=True).first.wait_for(state="visible", timeout=2000)
         
         # fill argument details (Step B)
         if function.argument_metadata:
@@ -260,22 +270,18 @@ class SheetClient:
                 desc_input = await self.page.query_selector(desc_selector)
                 if desc_input and await desc_input.is_visible():
                     await desc_input.fill(metadata.description)
-                    await self.page.wait_for_timeout(100)
                 
                 # fill example
                 example_input = await self.page.query_selector(example_selector)
                 if example_input and await example_input.is_visible():
                     await example_input.fill(metadata.example)
-                    await self.page.wait_for_timeout(100)
         
         # click Create using press Enter
         button = await self.page.query_selector('.waffle-named-formulas-sidebar-create-step-b-create-button')
         if button:
             await button.press('Enter')
-
-        # wait for function creation to complete
-        # the form should close and return to list view
-        await self.page.wait_for_timeout(1000)
+            # give server time to process creation
+            await self.page.wait_for_timeout(500)
         
         # wait for the list view to reappear (confirms creation completed)
         try:
@@ -288,7 +294,7 @@ class SheetClient:
     async def delete_function(self, name: str):
         await self.open_named_functions_sidebar()
         
-        #Find function card
+        # find function card
         rows = await self.page.query_selector_all('.waffle-named-formulas-sidebar-list-view-card')
         for row in rows:
             name_el = await row.query_selector('.waffle-named-formulas-sidebar-list-view-card-function-signature')
@@ -299,7 +305,8 @@ class SheetClient:
                     menu_btn = await row.query_selector('.waffle-named-formulas-sidebar-list-view-card-action-menu-button')
                     if menu_btn:
                         await menu_btn.click()
-                        await self.page.wait_for_timeout(800)  # increased from 500ms
+                        # wait for menu to appear
+                        await self.page.locator('.waffle-named-formulas-sidebar-list-view-card-action-menu[role="menu"]').filter(visible=True).first.wait_for(state="visible", timeout=2000)
                         
                         # click Remove
                         remove_actions = await self.page.query_selector_all('.waffle-named-formulas-sidebar-list-view-card-action-menu-item-action-name')
@@ -307,22 +314,15 @@ class SheetClient:
                             action_text = await action.inner_text()
                             if action_text == 'Remove':
                                 await action.click()
-                                # wait for deletion to complete and UI to update
-                                await self.page.wait_for_timeout(1500)  # increased from 1000ms
-                                
-                                # confirmation wait - ensure function is gone from list
-                                await self.page.wait_for_timeout(1000)  # increased from 500ms
-                                
-                                # verify deletion by checking if function still exists
-                                rows_after = await self.page.query_selector_all('.waffle-named-formulas-sidebar-list-view-card')
-                                for check_row in rows_after:
-                                    check_el = await check_row.query_selector('.waffle-named-formulas-sidebar-list-view-card-function-signature')
-                                    if check_el:
-                                        check_text = await check_el.inner_text()
-                                        if check_text.startswith(name):
-                                            # still there, wait a bit more
-                                            await self.page.wait_for_timeout(1000)
-                                            break
+                                # wait for function card to be removed from DOM
+                                try:
+                                    await self.page.locator(f'.waffle-named-formulas-sidebar-list-view-card:has-text("{name}")').wait_for(
+                                        state="detached",
+                                        timeout=5000
+                                    )
+                                except Exception:
+                                    # if selector fails, give a small buffer
+                                    await self.page.wait_for_timeout(500)
                                 return
 
     async def update_function(self, function: Function):
@@ -350,7 +350,8 @@ class SheetClient:
         docs_icon = await target_row.query_selector('.docs-icon')
         if docs_icon:
             await docs_icon.click()
-            await self.page.wait_for_timeout(300)
+            # wait for menu to appear
+            await self.page.locator('.waffle-named-formulas-sidebar-list-view-card-action-menu[role="menu"]').filter(visible=True).first.wait_for(state="visible", timeout=2000)
             
             # find and click Edit option
             actions = await self.page.query_selector_all(
@@ -362,8 +363,8 @@ class SheetClient:
                     await action.click()
                     break
             
-            # wait for edit dialog
-            await self.page.wait_for_timeout(800)
+            # wait for edit dialog to appear
+            await self.page.locator("div[aria-label='Enter formula description']").filter(visible=True).first.wait_for(state="visible", timeout=2000)
             
             # update description
             desc_inputs = await self.page.query_selector_all("div[aria-label='Enter formula description']")
@@ -371,7 +372,6 @@ class SheetClient:
                 for inp in desc_inputs:
                     if await inp.is_visible():
                         await inp.fill(function.description or "")
-                        await self.page.wait_for_timeout(100)
                         break
             
             # update definition
@@ -387,7 +387,6 @@ class SheetClient:
                                 await inp.evaluate("(el, val) => el.innerText = val", function.definition)
                             except Exception as eval_error:
                                 logger.error(f"both fill and evaluate failed: {eval_error}")
-                        await self.page.wait_for_timeout(100)
                         break
             
             # click Next
@@ -396,7 +395,8 @@ class SheetClient:
             )
             if button:
                 await button.press('Enter')
-                await self.page.wait_for_timeout(500)
+                # wait for Step B form to appear
+                await self.page.locator('.waffle-named-formulas-sidebar-create-step-b-named-formula-summary-message').filter(visible=True).first.wait_for(state="visible", timeout=2000)
             
             # update argument details (Step B)
             if function.argument_metadata:
@@ -407,18 +407,17 @@ class SheetClient:
                     desc_input = await self.page.query_selector(desc_selector)
                     if desc_input and await desc_input.is_visible():
                         await desc_input.fill(metadata.description)
-                        await self.page.wait_for_timeout(100)
                     
                     example_input = await self.page.query_selector(example_selector)
                     if example_input and await example_input.is_visible():
                         await example_input.fill(metadata.example)
-                        await self.page.wait_for_timeout(100)
             
             # click Save
             save_button = await self.page.query_selector('.waffle-named-formulas-sidebar-create-step-b-create-button:visible')
             if save_button:
                 await save_button.press('Enter')
-                await self.page.wait_for_timeout(1000)
+                # give server time to process update
+                await self.page.wait_for_timeout(500)
                 
                 # wait for list view to reappear
                 try:

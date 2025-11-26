@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, Optional
 from pathlib import Path
 import re
 import tempfile
@@ -43,7 +43,7 @@ class PublishService:
         finally:
             await self.sheet_client.close()
     
-    async def _create_package(self, output_dir: Path) -> Path:
+    async def _create_package(self, output_dir: Path, lockfile: Optional[Lockfile] = None) -> Path:
         """
         internal helper to create package (assumes connection already established).
         
@@ -54,13 +54,13 @@ class PublishService:
             path to created package file
         """
         # load and validate metadata
-        metadata = await self._get_and_validate_metadata()
+        metadata, lockfile = await self._get_and_validate_metadata()
         
         package_name = metadata["name"]
         version = metadata["version"]
         
         # get package functions (excluding metadata and dependencies)
-        package_functions = await self._get_package_functions(metadata)
+        package_functions = await self._get_package_functions(metadata, lockfile)
         
         # create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -87,7 +87,7 @@ class PublishService:
         await self.sheet_client.connect()
         
         try:
-            metadata = await self._get_and_validate_metadata()
+            metadata, _ = await self._get_and_validate_metadata()
             package_functions = await self._get_package_functions(metadata)
             
             return {
@@ -116,7 +116,7 @@ class PublishService:
         
         try:
             # 1. validate metadata and get package info
-            metadata = await self._get_and_validate_metadata()
+            metadata, lockfile = await self._get_and_validate_metadata()
             package_name = metadata["name"]
             version = metadata["version"]
             
@@ -140,7 +140,7 @@ class PublishService:
             # 4. create package locally
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir_path = Path(tmpdir)
-                package_path = await self._create_package(tmpdir_path)
+                package_path = await self._create_package(tmpdir_path, lockfile)
                 
                 # 5. clone or update fork
                 fork_path = tmpdir_path / "registry-fork"
@@ -323,9 +323,13 @@ class PublishService:
         
         return body
 
-    async def _get_and_validate_metadata(self) -> Dict:
-        """load and validate project metadata."""
-        metadata = await self.metadata_manager.get_project_metadata()
+    async def _get_and_validate_metadata(self) -> tuple[Dict, Optional[Lockfile]]:
+        """load and validate project metadata, also return lockfile.
+        
+        returns:
+            tuple of (metadata, lockfile)
+        """
+        metadata, lockfile = await self.metadata_manager.get_all_metadata()
         if not metadata:
             raise ValueError(
                 "No project metadata found. Ensure __GSPROJECT__ is defined with name and version."
@@ -347,14 +351,20 @@ class PublishService:
         # validate version format
         self._validate_version(metadata["version"])
         
-        return metadata
+        return metadata, lockfile
 
-    async def _get_package_functions(self, metadata: Dict) -> Dict[str, Function]:
-        """get functions that belong to this package (excluding metadata and dependencies)."""
+    async def _get_package_functions(self, metadata: Dict, lockfile: Optional[Lockfile] = None) -> Dict[str, Function]:
+        """get functions that belong to this package (excluding metadata and dependencies).
+        
+        args:
+            metadata: project metadata
+            lockfile: optional pre-loaded lockfile to avoid redundant get_named_functions call
+        """
         all_functions = await self.sheet_client.get_named_functions()
         
-        # get lockfile to identify dependency functions
-        lockfile = await self.metadata_manager.get_lockfile()
+        # get lockfile to identify dependency functions (use provided or fetch)
+        if lockfile is None:
+            lockfile = await self.metadata_manager.get_lockfile()
         
         # collect all function names from dependencies
         dependency_functions = set()
