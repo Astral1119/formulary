@@ -43,6 +43,14 @@ class TestPublishService:
                 "description": "Test package"
             })
             manager.get_lockfile = AsyncMock(return_value=Lockfile())
+            manager.get_all_metadata = AsyncMock(return_value=(
+                {
+                    "name": "test-package",
+                    "version": "1.0.0",
+                    "description": "Test package"
+                },
+                Lockfile()
+            ))
             yield manager
     
     @pytest.fixture
@@ -81,6 +89,7 @@ class TestPublishService:
     def test_publish_no_metadata(self, service, mock_metadata_manager):
         """test publishing when no metadata exists."""
         mock_metadata_manager.get_project_metadata = AsyncMock(return_value=None)
+        mock_metadata_manager.get_all_metadata = AsyncMock(return_value=(None, None))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             with pytest.raises(ValueError, match="No project metadata"):
@@ -88,9 +97,9 @@ class TestPublishService:
     
     def test_publish_missing_name(self, service, mock_metadata_manager):
         """test publishing when name is missing."""
-        mock_metadata_manager.get_project_metadata = AsyncMock(return_value={
-            "version": "1.0.0"
-        })
+        metadata = {"version": "1.0.0"}
+        mock_metadata_manager.get_project_metadata = AsyncMock(return_value=metadata)
+        mock_metadata_manager.get_all_metadata = AsyncMock(return_value=(metadata, Lockfile()))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             with pytest.raises(ValueError, match="must include 'name'"):
@@ -98,10 +107,12 @@ class TestPublishService:
     
     def test_publish_invalid_version(self, service, mock_metadata_manager):
         """test publishing with invalid version."""
-        mock_metadata_manager.get_project_metadata = AsyncMock(return_value={
+        metadata = {
             "name": "test-package",
             "version": "invalid-version"
-        })
+        }
+        mock_metadata_manager.get_project_metadata = AsyncMock(return_value=metadata)
+        mock_metadata_manager.get_all_metadata = AsyncMock(return_value=(metadata, Lockfile()))
         
         with tempfile.TemporaryDirectory() as tmpdir:
             with pytest.raises(ValueError, match="Invalid version"):

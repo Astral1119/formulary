@@ -9,6 +9,8 @@ class ProfileInfo(BaseModel):
     alias: str
     path: str  # relative path to profile directory
     email: str
+    user_agent: Optional[str] = None
+    cookies: Optional[list] = None
     created: str  # ISO format datetime
     last_used: str  # ISO format datetime
 

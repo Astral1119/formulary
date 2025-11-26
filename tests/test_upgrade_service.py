@@ -61,6 +61,14 @@ class TestUpgradeService:
             old_lockfile = Lockfile()
             old_lockfile.packages["hash"] = PackageLock(version="0.1.0")
             manager.get_lockfile = AsyncMock(return_value=old_lockfile)
+            manager.get_all_metadata = AsyncMock(return_value=(
+                {
+                    "name": "test-project",
+                    "version": "1.0.0",
+                    "dependencies": ["hash"]
+                },
+                old_lockfile
+            ))
             manager.set_project_metadata = AsyncMock()
             manager.set_lockfile = AsyncMock()
             

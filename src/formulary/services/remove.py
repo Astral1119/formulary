@@ -4,14 +4,16 @@ from pathlib import Path
 from ..sheets.client import SheetClient
 from ..sheets.metadata import MetadataManager
 from ..domain.models import Lockfile
+from ..ui.progress import ProgressManager
 
 
 class RemoveService:
     """handles package removal with dependency tracking."""
     
-    def __init__(self, sheet_client: SheetClient):
+    def __init__(self, sheet_client: SheetClient, progress_manager: ProgressManager = None):
         self.sheet_client = sheet_client
         self.metadata_manager = MetadataManager(sheet_client)
+        self.progress_manager = progress_manager or ProgressManager()
     
     async def remove(self, packages: List[str], force: bool = False):
         """
@@ -106,39 +108,40 @@ class RemoveService:
             # we can use the lockfile to trace dependencies!
             packages_to_keep = set()
             
-            # add direct dependencies
-            for dep in new_deps:
-                # parse name
-                if "@file:" in dep:
-                    name = dep.split("@file:")[0]
-                else:
-                    # simple parse
-                    name = dep.split("@")[0].split("=")[0].split(">")[0].split("<")[0]
-                packages_to_keep.add(name)
-            
-            # trace transitive dependencies using lockfile
-            # we need to iterate until stable
-            changed = True
-            while changed:
-                changed = False
-                # iterate over all packages in lockfile
-                for pkg_name, pkg_lock in lockfile.packages.items():
-                    if pkg_name in packages_to_keep:
-                        # add its dependencies
-                        for dep in pkg_lock.dependencies:
-                            # parse dependency name
-                            # dep string in metadata might be "name" or "name>=1.0"
-                            import re
-                            match = re.match(r"^([A-Za-z0-9_\-]+)(.*)$", dep)
-                            if match:
-                                dep_name = match.group(1)
-                                if dep_name not in packages_to_keep:
-                                    packages_to_keep.add(dep_name)
-                                    changed = True
-                            else:
-                                if dep not in packages_to_keep:
-                                    packages_to_keep.add(dep)
-                                    changed = True
+            with self.progress_manager.spinner("analyzing dependencies"):
+                # add direct dependencies
+                for dep in new_deps:
+                    # parse name
+                    if "@file:" in dep:
+                        name = dep.split("@file:")[0]
+                    else:
+                        # simple parse
+                        name = dep.split("@")[0].split("=")[0].split(">")[0].split("<")[0]
+                    packages_to_keep.add(name)
+                
+                # trace transitive dependencies using lockfile
+                # we need to iterate until stable
+                changed = True
+                while changed:
+                    changed = False
+                    # iterate over all packages in lockfile
+                    for pkg_name, pkg_lock in lockfile.packages.items():
+                        if pkg_name in packages_to_keep:
+                            # add its dependencies
+                            for dep in pkg_lock.dependencies:
+                                # parse dependency name
+                                # dep string in metadata might be "name" or "name>=1.0"
+                                import re
+                                match = re.match(r"^([A-Za-z0-9_\-]+)(.*)$", dep)
+                                if match:
+                                    dep_name = match.group(1)
+                                    if dep_name not in packages_to_keep:
+                                        packages_to_keep.add(dep_name)
+                                        changed = True
+                                else:
+                                    if dep not in packages_to_keep:
+                                        packages_to_keep.add(dep)
+                                        changed = True
 
             # 6. identify packages to remove (installed but not in packages_to_keep)
             packages_to_remove = []
@@ -147,15 +150,23 @@ class RemoveService:
                     packages_to_remove.append(pkg_name)
             
             # 7. remove packages
+            # calculate total functions to remove for progress bar
+            total_functions = 0
             for pkg_name in packages_to_remove:
-                pkg_lock = lockfile.packages[pkg_name]
-                
-                # delete functions
-                for func_name in pkg_lock.functions:
-                    await self.sheet_client.delete_function(func_name)
-                
-                # remove from lockfile
-                del lockfile.packages[pkg_name]
+                total_functions += len(lockfile.packages[pkg_name].functions)
+
+            with self.progress_manager.task_progress("removing functions", total=total_functions) as (progress, task_id):
+                for pkg_name in packages_to_remove:
+                    pkg_lock = lockfile.packages[pkg_name]
+                    
+                    # delete functions
+                    for func_name in pkg_lock.functions:
+                        await self.sheet_client.delete_function(func_name)
+                        if progress and task_id is not None:
+                            progress.advance(task_id, 1)
+                    
+                    # remove from lockfile
+                    del lockfile.packages[pkg_name]
             
             if packages_to_remove:
                 console = __import__('rich.console').console.Console()

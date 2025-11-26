@@ -12,16 +12,24 @@ from ..sheets.metadata import MetadataManager
 from ..bundling.packager import Packager
 from ..domain.models import Function, Lockfile
 from ..github.client import GitHubClient
+from ..ui.progress import ProgressManager
 
 
 class PublishService:
     """handles package publishing from sheet to .gspkg file and registry."""
     
-    def __init__(self, sheet_client: SheetClient, packager: Packager, registry_url: str = "https://github.com/Astral1119/formulary-registry"):
+    def __init__(
+        self, 
+        sheet_client: SheetClient, 
+        packager: Packager, 
+        registry_url: str = "https://github.com/Astral1119/formulary-registry",
+        progress_manager: ProgressManager = None
+    ):
         self.sheet_client = sheet_client
         self.packager = packager
         self.metadata_manager = MetadataManager(sheet_client)
         self.registry_url = registry_url
+        self.progress_manager = progress_manager or ProgressManager()
     
     async def pack(self, output_dir: Path) -> Path:
         """
@@ -60,7 +68,8 @@ class PublishService:
         version = metadata["version"]
         
         # get package functions (excluding metadata and dependencies)
-        package_functions = await self._get_package_functions(metadata, lockfile)
+        with self.progress_manager.spinner("extracting package functions"):
+            package_functions = await self._get_package_functions(metadata, lockfile)
         
         # create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -69,11 +78,12 @@ class PublishService:
         package_filename = f"{package_name}-{version}.gspkg"
         package_path = output_dir / package_filename
         
-        self.packager.create_package(
-            package_path,
-            metadata,
-            package_functions
-        )
+        with self.progress_manager.spinner(f"creating package {package_filename}"):
+            self.packager.create_package(
+                package_path,
+                metadata,
+                package_functions
+            )
         
         return package_path
 
@@ -147,21 +157,23 @@ class PublishService:
                 
                 if gh_client.check_fork_exists(username):
                     # clone existing fork
-                    try:
-                        subprocess.run(
-                            ["git", "clone", f"https://github.com/{username}/formulary-registry.git", str(fork_path)],
-                            check=True,
-                            capture_output=True,
-                            text=True
-                        )
-                    except subprocess.CalledProcessError as e:
-                        raise RuntimeError(
-                            f"failed to clone fork: {e.stderr}\n"
-                            "ensure git is installed and you have network access."
-                        ) from e
+                    with self.progress_manager.spinner("cloning fork"):
+                        try:
+                            subprocess.run(
+                                ["git", "clone", f"https://github.com/{username}/formulary-registry.git", str(fork_path)],
+                                check=True,
+                                capture_output=True,
+                                text=True
+                            )
+                        except subprocess.CalledProcessError as e:
+                            raise RuntimeError(
+                                f"failed to clone fork: {e.stderr}\n"
+                                "ensure git is installed and you have network access."
+                            ) from e
                     
                     # sync with upstream and reset to upstream/main
-                    gh_client.sync_fork(username)
+                    with self.progress_manager.spinner("syncing with upstream"):
+                        gh_client.sync_fork(username)
                     
                     try:
                         subprocess.run(
@@ -191,20 +203,22 @@ class PublishService:
                         ) from e
                 else:
                     # create fork
-                    gh_client.create_fork()
+                    with self.progress_manager.spinner("creating fork"):
+                        gh_client.create_fork()
                     # clone it
-                    try:
-                        subprocess.run(
-                            ["git", "clone", f"https://github.com/{username}/formulary-registry.git", str(fork_path)],
-                            check=True,
-                            capture_output=True,
-                            text=True
-                        )
-                    except subprocess.CalledProcessError as e:
-                        raise RuntimeError(
-                            f"failed to clone new fork: {e.stderr}\n"
-                            "ensure git is installed and you have network access."
-                        ) from e
+                    with self.progress_manager.spinner("cloning fork"):
+                        try:
+                            subprocess.run(
+                                ["git", "clone", f"https://github.com/{username}/formulary-registry.git", str(fork_path)],
+                                check=True,
+                                capture_output=True,
+                                text=True
+                            )
+                        except subprocess.CalledProcessError as e:
+                            raise RuntimeError(
+                                f"failed to clone new fork: {e.stderr}\n"
+                                "ensure git is installed and you have network access."
+                            ) from e
                 
                 # 6. create branch
                 branch_name = f"publish/{package_name}-{version}"
@@ -215,18 +229,20 @@ class PublishService:
                 
                 # 8. commit and push
                 commit_message = f"Add {package_name} v{version}"
-                gh_client.commit_and_push(fork_path, branch_name, commit_message, username)
+                with self.progress_manager.spinner(f"pushing to {branch_name}"):
+                    gh_client.commit_and_push(fork_path, branch_name, commit_message, username)
                 
                 # 9. create PR
                 pr_title = f"📦 {package_name} v{version}"
                 pr_body = self._generate_pr_body(metadata, package_name, version)
                 
-                pr_url = gh_client.create_pull_request(
-                    branch_name,
-                    pr_title,
-                    pr_body,
-                    username
-                )
+                with self.progress_manager.spinner("creating pull request"):
+                    pr_url = gh_client.create_pull_request(
+                        branch_name,
+                        pr_title,
+                        pr_body,
+                        username
+                    )
                 
                 return pr_url
                 

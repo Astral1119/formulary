@@ -4,20 +4,30 @@ from .driver import PlaywrightDriver
 from ..domain.models import Function
 import asyncio
 from playwright.async_api import Page
+from ..ui.progress import ProgressManager
 
 logger = logging.getLogger(__name__)
 
 class SheetClient:
-    def __init__(self, driver: PlaywrightDriver, url: str):
+    def __init__(self, driver: PlaywrightDriver, url: str, progress_manager: ProgressManager = None):
         self.driver = driver
         self.url = url
         self._sidebar_opened = False  # track if sidebar has been opened in this session
+        self.progress_manager = progress_manager
 
     @property
     def page(self) -> Page:
         return self.driver.page
 
     async def connect(self):
+        if self.progress_manager:
+            with self.progress_manager.spinner("connecting to google sheets"):
+                await self._do_connect()
+        else:
+            await self._do_connect()
+    
+    async def _do_connect(self):
+        """internal connection logic."""
         await self.driver.start()
         await self.page.goto(self.url)
         # dismiss "Got it" if present
