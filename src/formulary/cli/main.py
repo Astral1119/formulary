@@ -612,4 +612,4 @@ def self_uninstall():
         raise typer.Exit(code=1)
 
 if __name__ == "__main__":
-    app()
+    app(prog_name="formulary")
