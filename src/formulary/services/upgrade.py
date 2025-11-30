@@ -143,7 +143,7 @@ class UpgradeService:
                     if fname in current_functions:
                         # update existing function
                         await self.sheet_client.delete_function(fname)
-                    await self.sheet_client.create_function(fname, new_func.definition)
+                    await self.sheet_client.create_function(new_func)
                     if progress and task_id is not None:
                         progress.advance(task_id, 1)
             
