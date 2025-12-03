@@ -266,15 +266,22 @@ class PublishService:
         # 2. update ONLY the package being published
         if package_name not in index:
             # new package - create entry
+            owners = metadata.get("owners", [])
+            if not owners:
+                owners = [username]
+                
             index[package_name] = {
-                "owners": [username],
+                "owners": owners,
                 "versions": {},
                 "latest": version
             }
         else:
-            # existing package - preserve owners, update latest
+            # existing package
             if "owners" not in index[package_name]:
-                index[package_name]["owners"] = [username]
+                owners = metadata.get("owners", [])
+                if not owners:
+                    owners = [username]
+                index[package_name]["owners"] = owners
             # update latest version
             index[package_name]["latest"] = version
             
@@ -308,14 +315,12 @@ class PublishService:
         functions = metadata.get("functions", [])
         dependencies = metadata.get("dependencies", [])
         description = metadata.get("description", "No description provided")
-        author = metadata.get("author", "Unknown")
         license_id = metadata.get("license", "Unknown")
         homepage = metadata.get("homepage", "")
         
         body = f"""## package: {package_name} v{version}
 
 **Description:** {description}
-**Author:** {author}
 **License:** {license_id}
 """
         if homepage:

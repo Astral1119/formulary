@@ -114,6 +114,12 @@ class MetadataManager:
                         data["dependencies"] = [d.strip() for d in val.split(",") if d.strip()]
                     else:
                         data["dependencies"] = []
+                elif key == "owners":
+                    # parse comma-separated owners
+                    if val:
+                        data["owners"] = [o.strip() for o in val.split(",") if o.strip()]
+                    else:
+                        data["owners"] = []
                 else:
                     data[key] = val
 
@@ -142,10 +148,17 @@ class MetadataManager:
         else:
             # include empty dependencies field
             rows.append(["dependencies", ""])
+
+        # owners
+        if "owners" in metadata and metadata["owners"]:
+            owners_str = ",".join(metadata["owners"])
+            rows.append(["owners", owners_str])
+        else:
+            rows.append(["owners", ""])
             
         # other fields
         for key, val in metadata.items():
-            if key not in ["name", "version", "description", "dependencies"]:
+            if key not in ["name", "version", "description", "dependencies", "owners"]:
                 rows.append([key, str(val)])
                 
         definition = self._format_array_literal(rows)

@@ -9,6 +9,7 @@ from ..sheets.driver import PlaywrightDriver
 from ..sheets.client import SheetClient
 from ..sheets.metadata import MetadataManager
 from ..registry.github import GitHubRegistry
+from ..github.client import GitHubClient
 from ..registry.cache import LocalCache
 from ..resolution.resolver import Resolver
 from ..bundling.packager import Packager
@@ -171,22 +172,18 @@ def init(url: str, name: str = None, force: bool = False, interactive: bool = Tr
         # description
         description = Prompt.ask("Description", default="")
         
-        # author (try to get from git)
-        import subprocess
-        default_author = None
+        # owners (github usernames)
+        default_owners = ""
         try:
-            git_name = subprocess.check_output(["git", "config", "user.name"]).decode().strip()
-            git_email = subprocess.check_output(["git", "config", "user.email"]).decode().strip()
-            if git_name and git_email:
-                default_author = f"{git_name} <{git_email}>"
-        except:
+            gh_client = GitHubClient()
+            username = gh_client.get_authenticated_user()
+            if username:
+                default_owners = username
+        except Exception:
             pass
-        
-        # only provide default if we found git config, otherwise no default
-        if default_author:
-            author = Prompt.ask("Author", default=default_author)
-        else:
-            author = Prompt.ask("Author")
+            
+        owners_str = Prompt.ask("Owners (comma-separated GitHub usernames, optional)", default=default_owners)
+        owners = [o.strip() for o in owners_str.split(",") if o.strip()]
         
         # license
         console.print("\n[bold]License:[/bold]")
@@ -223,7 +220,7 @@ def init(url: str, name: str = None, force: bool = False, interactive: bool = Tr
         project_name = name or "my-project"
         version = "0.1.0"
         description = ""
-        author = None
+        owners = []
         license_id = "MIT"
         homepage = None
         keywords = []
@@ -239,7 +236,7 @@ def init(url: str, name: str = None, force: bool = False, interactive: bool = Tr
                 "name": project_name,
                 "version": version,
                 "description": description,
-                "author": author,
+                "owners": owners,
                 "license": license_id,
                 "homepage": homepage,
                 "keywords": keywords,
