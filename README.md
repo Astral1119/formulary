@@ -13,6 +13,13 @@ A package manager for Google Sheets that enables you to install, manage, and sha
 - **Automated Browser Control**: Reliable Playwright-based Google Sheets automation
 - **Private Sheets**: Keep your sheets private - authentication is stored in profiles
 
+## Example
+
+https://github.com/user-attachments/assets/1297f659-3b5c-467d-874f-9e1a707b7f99
+
+This example was recorded on MacOS, with some modifications.
+In the example, we install Formulary, set up a profile, and use Formulary to install a package (in this case, a fuzzy lookup package) into a Google Sheet.
+
 ## Installation
 
 ### Prerequisites
@@ -21,9 +28,13 @@ A package manager for Google Sheets that enables you to install, manage, and sha
 - Git
 - Google account with access to Google Sheets
 
+If you want to publish a package, you also need to set up the [Github CLI](https://cli.github.com/).
+
 ### Installation
 
 **macOS / Linux:**
+
+Simply copy/paste the following command into a terminal.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Astral1119/formulary/main/scripts/install.sh | bash
@@ -86,8 +97,10 @@ formulary profile show              # Show active profile details
 Link your Google Sheet to Formulary:
 
 ```bash
-formulary init "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"
+formulary init https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
 ```
+
+If you haven't initialized this sheet with Formulary before, it will take you into a flow to initialize it. These details are only important if you want to publish your sheet as a package. If you don't want to do this, you can just press enter a couple of times to initialize with default options.
 
 ### 3. Install Packages
 
