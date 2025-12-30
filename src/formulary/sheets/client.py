@@ -45,7 +45,7 @@ class SheetClient:
     async def open_named_functions_sidebar(self, check_empty_state: bool = True):
         # navigate to Data > Named functions
 
-        data_menu = self.page.get_by_role("menuitem", name="Data")
+        data_menu = self.page.get_by_role("menuitem", name="Data").first
         await data_menu.click()
         await self.page.keyboard.press("k") # shortcut for named functions
         
