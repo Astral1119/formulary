@@ -1,0 +1,22 @@
+{
+  "name": "@formulary/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "formulary": "dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@formulary/core": "workspace:*",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  }
+}
