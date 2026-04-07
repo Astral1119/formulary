@@ -22,6 +22,7 @@ export interface VersionMeta {
   artifact: string; // relative path to .fpkg
   integrity: string; // sha256:...
   dependencies: Record<string, string>; // name -> version specifier
+  platformDependencies?: Partial<Record<Platform, Record<string, string>>>;
   exports: string[];
   platforms: Platform[];
 }

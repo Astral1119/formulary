@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@formulary/core": "workspace:*",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "playwright": "^1.59.1"
   },
   "devDependencies": {
     "typescript": "^5.8.0",

@@ -7,6 +7,7 @@ import type {
   LockEntry,
 } from "@formulary/core";
 import { XlsxFile, type SheetCell } from "./xlsx.js";
+import { unwrapLambda } from "./lambda.js";
 
 const MANIFEST_SHEET = "__manifest__";
 const LOCK_SHEET = "__lock__";
@@ -33,11 +34,16 @@ export class ExcelAdapter implements PlatformAdapter {
   // ─── Named Functions ────────────────────────────────────────────────
 
   async listFunctions(): Promise<NamedFunction[]> {
-    return this.xlsx.readDefinedNames().map((dn) => ({
-      name: dn.name,
-      definition: stripPrefixes(dn.value),
-      description: dn.comment,
-    }));
+    return this.xlsx.readDefinedNames().map((dn) => {
+      const definition = stripPrefixes(dn.value);
+      const { args } = unwrapLambda(definition);
+      return {
+        name: dn.name,
+        definition,
+        description: dn.comment,
+        arguments: args,
+      };
+    });
   }
 
   async createFunction(fn: NamedFunction): Promise<void> {

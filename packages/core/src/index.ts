@@ -20,6 +20,7 @@ export {
   type Platform,
   type PackageBundle,
   resolveFunctions,
+  resolveDependencies,
   validateManifest,
 } from "./manifest.js";
 
@@ -38,6 +39,14 @@ export {
   type PackageMeta,
   type VersionMeta,
 } from "./registry.js";
+
+export {
+  resolveDeps,
+  pickVersion,
+  ResolveError,
+  type ResolvedPackage,
+  type MetaFetcher,
+} from "./resolver.js";
 
 export {
   parseSemVer,

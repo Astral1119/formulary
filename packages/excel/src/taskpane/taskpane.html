@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Formulary</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <script
+      src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"
+      type="text/javascript"
+    ></script>
+
+    <link rel="stylesheet" href="./taskpane.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-brand">
+          <span class="header-mark">f</span>
+          <span class="header-title">formulary</span>
+        </div>
+      </header>
+
+      <!-- Tabs -->
+      <nav class="tabs" role="tablist">
+        <button
+          class="tab"
+          role="tab"
+          data-panel="project"
+          aria-selected="false"
+        >
+          Project
+        </button>
+        <button
+          class="tab active"
+          role="tab"
+          data-panel="browse"
+          aria-selected="true"
+        >
+          Browse
+        </button>
+        <button
+          class="tab"
+          role="tab"
+          data-panel="installed"
+          aria-selected="false"
+        >
+          Installed
+        </button>
+      </nav>
+
+      <!-- Status bar -->
+      <div id="status" class="status" aria-live="polite"></div>
+
+      <!-- Project panel -->
+      <section id="project-panel" class="panel">
+        <div id="project-not-init" class="init-view" hidden>
+          <div class="init-icon">{ }</div>
+          <p>Initialize this workbook as a Formulary project to manage packages and metadata.</p>
+          <div class="form-group">
+            <label for="init-name">Project name</label>
+            <input type="text" id="init-name" placeholder="my-package" />
+          </div>
+          <div class="form-group">
+            <label for="init-desc">Description</label>
+            <input type="text" id="init-desc" placeholder="Optional" />
+          </div>
+          <button class="btn btn-primary" id="btn-init">Initialize</button>
+        </div>
+        <div id="project-initialized" hidden>
+          <div class="section-label">Manifest</div>
+          <div class="project-fields" id="project-fields"></div>
+          <div class="section-label">Dependencies</div>
+          <div class="project-fields" id="project-deps"></div>
+        </div>
+      </section>
+
+      <!-- Browse panel -->
+      <section id="browse-panel" class="panel active">
+        <div class="search-bar">
+          <svg class="search-icon" viewBox="0 0 16 16" fill="none">
+            <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.5" />
+            <line x1="10" y1="10" x2="14.5" y2="14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          <input
+            type="text"
+            id="search"
+            placeholder="Search packages..."
+            autocomplete="off"
+          />
+        </div>
+        <ul id="package-list" class="package-list" role="list">
+          <li class="loading-state">
+            <div class="loader"></div>
+            <span>Loading packages...</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Installed panel -->
+      <section id="installed-panel" class="panel">
+        <div class="local-install">
+          <label class="file-drop" id="file-drop">
+            <input type="file" id="file-input" accept=".fpkg,.gspkg,.zip" hidden />
+            <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
+              <path d="M8 2v9M4.5 7.5L8 11l3.5-3.5M2.5 13.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>Install from file</span>
+          </label>
+        </div>
+        <ul id="installed-list" class="package-list" role="list">
+          <li class="loading-state">
+            <div class="loader"></div>
+            <span>Loading...</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Detail view (overlays panels) -->
+      <section id="detail-view" class="detail-view" hidden>
+        <button class="back-btn" id="btn-back">
+          <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+            <path d="M10 2L4 8l6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Back
+        </button>
+        <div class="detail-header">
+          <div class="detail-name" id="detail-name"></div>
+          <div class="detail-version" id="detail-version"></div>
+        </div>
+        <div class="detail-desc" id="detail-desc"></div>
+
+        <div id="detail-actions" class="detail-actions"></div>
+
+        <div class="detail-section" id="detail-deps-section">
+          <h3>Dependencies</h3>
+          <ul class="dep-list" id="detail-deps"></ul>
+        </div>
+
+        <div class="detail-section" id="detail-funcs-section">
+          <h3>Exports</h3>
+          <ul class="func-list" id="detail-funcs"></ul>
+        </div>
+
+        <div class="detail-section" id="detail-owners-section">
+          <h3>Owners</h3>
+          <div id="detail-owners" class="detail-owners"></div>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="./taskpane.ts"></script>
+  </body>
+</html>

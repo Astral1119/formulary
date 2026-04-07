@@ -1,0 +1,21 @@
+{
+  "name": "@formulary/excel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@formulary/core": "workspace:*",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/office-js": "^1.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.0.0"
+  }
+}

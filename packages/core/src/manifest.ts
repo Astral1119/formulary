@@ -7,6 +7,7 @@ export interface Manifest {
   homepage?: string;
   keywords?: string[];
   dependencies: Record<string, string>; // name -> version specifier
+  platformDependencies?: Partial<Record<Platform, Record<string, string>>>;
   exports: string[];
   platforms: Platform[];
 }
@@ -39,6 +40,16 @@ export function resolveFunctions(
   const platformOverrides = bundle.platformFunctions?.[platform];
   if (!platformOverrides) return bundle.functions;
   return { ...bundle.functions, ...platformOverrides };
+}
+
+/** Resolve dependencies for a specific platform: shared + platform-specific. */
+export function resolveDependencies(
+  manifest: Manifest,
+  platform: Platform,
+): Record<string, string> {
+  const shared = manifest.dependencies ?? {};
+  const platformDeps = manifest.platformDependencies?.[platform] ?? {};
+  return { ...shared, ...platformDeps };
 }
 
 export function validateManifest(manifest: Manifest): string[] {
