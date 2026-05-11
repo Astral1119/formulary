@@ -267,6 +267,11 @@ async function installBundle(
       name,
       definition: def.definition,
       description: def.description,
+      parameters: Object.entries(def.arguments).map(([argName, arg]) => ({
+        name: argName,
+        description: arg.description,
+        examples: arg.example ? [arg.example] : [],
+      })),
     };
 
     if (existingNames.has(name.toUpperCase())) {

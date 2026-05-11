@@ -67,21 +67,21 @@ const HELLO: NamedFunction = {
   name: "HELLO",
   definition: 'LAMBDA(name, "Hello, " & name & "!")',
   description: "Greets someone",
-  arguments: ["name"],
+  parameters: [{ name: "name", examples: [] }],
 };
 
 const DOUBLE: NamedFunction = {
   name: "DOUBLE",
   definition: "LAMBDA(x, x * 2)",
   description: "Doubles a number",
-  arguments: ["x"],
+  parameters: [{ name: "x", examples: [] }],
 };
 
 const HASH: NamedFunction = {
   name: "HASH",
   definition: "LAMBDA(val, 12345)",
   description: "From charter dep",
-  arguments: ["val"],
+  parameters: [{ name: "val", examples: [] }],
 };
 
 // ─── Tests ────────────────────────────────────────────────────────
@@ -242,9 +242,18 @@ describe("extract", () => {
       name: "GREET",
       definition: "LAMBDA(name, greeting, greeting & name)",
       description: "Custom greeting",
-      arguments: ["name", "greeting"],
-      argumentDescriptions: { name: "Person to greet", greeting: "Greeting word" },
-      argumentExamples: { name: "world", greeting: "Hi" },
+      parameters: [
+        {
+          name: "name",
+          description: "Person to greet",
+          examples: ["world"],
+        },
+        {
+          name: "greeting",
+          description: "Greeting word",
+          examples: ["Hi"],
+        },
+      ],
     };
 
     const adapter = new FakeAdapter([fn]);
@@ -257,22 +266,6 @@ describe("extract", () => {
       name: { description: "Person to greet", example: "world" },
       greeting: { description: "Greeting word", example: "Hi" },
     });
-  });
-
-  it("falls back to parsing LAMBDA when arguments missing", async () => {
-    // No `arguments` field — extract should parse from definition
-    const fn: NamedFunction = {
-      name: "PARSED",
-      definition: "LAMBDA(a, b, a + b)",
-    };
-
-    const adapter = new FakeAdapter([fn]);
-    await extract("", { output: tmpDir, adapter });
-
-    const functions = readJson<Record<string, FunctionDef>>(
-      join(tmpDir, "functions.json"),
-    );
-    expect(Object.keys(functions.PARSED.arguments)).toEqual(["a", "b"]);
   });
 
   it("reports nothing when all functions are deps", async () => {

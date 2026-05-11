@@ -1,14 +1,14 @@
 /**
  * Shared LAMBDA wrap/unwrap utilities.
  *
- * Used by both the Excel and GSheets adapters, plus the extract command.
+ * Used by both the Excel and GSheets adapters.
  *
  * GSheets named functions store arguments separately from the body, so we
  * need to convert between the wrapped form ("LAMBDA(x, x+1)") and the
  * unwrapped form ({args: ["x"], body: "x+1"}).
  *
- * Excel stores the full LAMBDA wrapper as the formula, but we still need
- * to parse it during extract to populate the `arguments` field.
+ * Excel stores the full LAMBDA wrapper as the formula, but adapters still
+ * parse it to expose grouped named-function parameters.
  */
 
 /**

@@ -254,19 +254,11 @@ function toNamedFunction(
     name,
     definition: fn.definition,
     description: fn.description,
-    arguments: Object.keys(fn.arguments),
-    argumentDescriptions: Object.fromEntries(
-      Object.entries(fn.arguments).map(([argName, arg]) => [
-        argName,
-        arg.description,
-      ]),
-    ),
-    argumentExamples: Object.fromEntries(
-      Object.entries(fn.arguments).map(([argName, arg]) => [
-        argName,
-        arg.example,
-      ]),
-    ),
+    parameters: Object.entries(fn.arguments).map(([argName, arg]) => ({
+      name: argName,
+      description: arg.description,
+      examples: arg.example ? [arg.example] : [],
+    })),
   };
 }
 

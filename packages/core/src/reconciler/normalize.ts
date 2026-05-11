@@ -19,10 +19,9 @@ export function normalizeFunction(
     name: fn.name,
     definition: fn.definition,
     description: fn.description,
-    parameters: (fn.arguments ?? []).map((name) => ({
-      name,
-      description: fn.argumentDescriptions?.[name],
-      examples: fn.argumentExamples?.[name] ? [fn.argumentExamples[name]] : [],
+    parameters: fn.parameters.map((parameter) => ({
+      ...parameter,
+      examples: [...parameter.examples],
     })),
     examples: [],
     origin: { ...origin },
@@ -89,23 +88,15 @@ function hashFunction(fn: NamedFunction): string {
           name: fn.name,
           definition: fn.definition,
           description: fn.description,
-          arguments: fn.arguments ?? [],
-          argumentDescriptions: sortRecord(fn.argumentDescriptions),
-          argumentExamples: sortRecord(fn.argumentExamples),
+          parameters: fn.parameters.map((parameter) => ({
+            name: parameter.name,
+            description: parameter.description,
+            examples: [...parameter.examples].sort(),
+          })),
         }),
       ),
     ),
   );
 
   return `sha256:${digest}`;
-}
-
-function sortRecord(
-  record: Record<string, string> | undefined,
-): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(record ?? {}).sort(([left], [right]) =>
-      left.localeCompare(right),
-    ),
-  );
 }

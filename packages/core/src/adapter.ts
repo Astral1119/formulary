@@ -5,9 +5,13 @@ export interface NamedFunction {
   name: string;
   definition: string;
   description?: string;
-  arguments?: string[];
-  argumentDescriptions?: Record<string, string>;
-  argumentExamples?: Record<string, string>;
+  parameters: NamedFunctionParameter[];
+}
+
+export interface NamedFunctionParameter {
+  name: string;
+  description?: string;
+  examples: string[];
 }
 
 /**

@@ -23,7 +23,6 @@ import type {
   NamedFunction,
 } from "@formulary/core";
 import { ExcelAdapter } from "../adapter/excel-adapter.js";
-import { unwrapLambda } from "../adapter/lambda.js";
 
 interface ExtractOptions {
   output: string;
@@ -124,14 +123,11 @@ function buildFunctionsJson(
   const result: Record<string, FunctionDef> = {};
 
   for (const fn of functions) {
-    // Get arg names — prefer the adapter-provided list, fall back to parsing
-    const argNames = fn.arguments ?? unwrapLambda(fn.definition).args;
-
     const argsObj: Record<string, { description: string; example: string }> = {};
-    for (const argName of argNames) {
-      argsObj[argName] = {
-        description: fn.argumentDescriptions?.[argName] ?? "",
-        example: fn.argumentExamples?.[argName] ?? "",
+    for (const parameter of fn.parameters) {
+      argsObj[parameter.name] = {
+        description: parameter.description ?? "",
+        example: parameter.examples[0] ?? "",
       };
     }
 

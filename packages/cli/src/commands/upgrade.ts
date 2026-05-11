@@ -108,7 +108,16 @@ export async function upgrade(
     const functions = resolveFunctions(bundle, platform);
 
     for (const [name, def] of Object.entries(functions)) {
-      const fn = { name, definition: def.definition, description: def.description };
+      const fn = {
+        name,
+        definition: def.definition,
+        description: def.description,
+        parameters: Object.entries(def.arguments).map(([argName, arg]) => ({
+          name: argName,
+          description: arg.description,
+          examples: arg.example ? [arg.example] : [],
+        })),
+      };
       if (existingNames.has(name.toUpperCase())) {
         await adapter.updateFunction(fn);
       } else {

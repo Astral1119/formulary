@@ -391,14 +391,12 @@ import {
 import type { Lockfile, NamedFunction, ProjectMetadata } from "../src/adapter.js";
 
 describe("reconciler normalization", () => {
-  it("normalizes named-function arguments into parameter records", () => {
+  it("normalizes named-function parameter records", () => {
     const fn: NamedFunction = {
       name: "DOUBLE",
       definition: "LAMBDA(x, x * 2)",
       description: "Doubles a value",
-      arguments: ["x"],
-      argumentDescriptions: { x: "Value to double" },
-      argumentExamples: { x: "21" },
+      parameters: [{ name: "x", description: "Value to double", examples: ["21"] }],
     };
 
     expect(normalizeFunction(fn)).toMatchObject({
@@ -479,7 +477,8 @@ Expected: FAIL because `normalizeFunction`, `normalizeProjectMetadata`, and `nor
 Create `packages/core/src/reconciler/normalize.ts`:
 
 ```ts
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import type { Lockfile, NamedFunction, ProjectMetadata } from "../adapter.js";
 import {
   RECONCILER_SCHEMA_VERSION,
@@ -494,19 +493,17 @@ export function normalizeFunction(
   fn: NamedFunction,
   origin: FunctionOrigin = { kind: "unknown" },
 ): WorkbookFunction {
-  const argNames = fn.arguments ?? [];
   return {
     name: fn.name,
     definition: fn.definition,
     description: fn.description,
-    parameters: argNames.map((name) => ({
-      name,
-      description: fn.argumentDescriptions?.[name],
-      examples: fn.argumentExamples?.[name] ? [fn.argumentExamples[name]] : [],
+    parameters: fn.parameters.map((parameter) => ({
+      ...parameter,
+      examples: [...parameter.examples],
     })),
     examples: [],
     origin,
-    hash: hashFunction(fn.name, fn.definition, argNames),
+    hash: hashFunction(fn),
   };
 }
 
@@ -555,10 +552,25 @@ function splitList(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function hashFunction(name: string, definition: string, args: string[]): `sha256:${string}` {
-  const hash = createHash("sha256");
-  hash.update(JSON.stringify({ name, definition, args }));
-  return `sha256:${hash.digest("hex")}`;
+function hashFunction(fn: NamedFunction): `sha256:${string}` {
+  const digest = bytesToHex(
+    sha256(
+      utf8ToBytes(
+        JSON.stringify({
+          name: fn.name,
+          definition: fn.definition,
+          description: fn.description,
+          parameters: fn.parameters.map((parameter) => ({
+            name: parameter.name,
+            description: parameter.description,
+            examples: [...parameter.examples].sort(),
+          })),
+        }),
+      ),
+    ),
+  );
+
+  return `sha256:${digest}`;
 }
 ```
 

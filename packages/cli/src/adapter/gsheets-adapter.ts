@@ -220,12 +220,18 @@ export class GSheetsAdapter implements PlatformAdapter {
 
     // Re-wrap as LAMBDA for consistent storage format
     const definition = wrapLambda(argNames, body);
-    return { name, definition, description };
+    return {
+      name,
+      definition,
+      description,
+      parameters: argNames.map((name) => ({ name, examples: [] })),
+    };
   }
 
   async createFunction(fn: NamedFunction): Promise<void> {
     await this.openSidebar();
-    const { args, body } = unwrapLambda(fn.definition);
+    const { body } = unwrapLambda(fn.definition);
+    const args = fn.parameters.map((parameter) => parameter.name);
     this.log(`creating ${fn.name}(${args.join(", ")})`);
 
     // Click Add
@@ -324,7 +330,8 @@ export class GSheetsAdapter implements PlatformAdapter {
 
   async updateFunction(fn: NamedFunction): Promise<void> {
     await this.openSidebar();
-    const { args, body } = unwrapLambda(fn.definition);
+    const { body } = unwrapLambda(fn.definition);
+    const args = fn.parameters.map((parameter) => parameter.name);
     this.log(`updating ${fn.name}(${args.join(", ")})`);
 
     // Find the target row
@@ -696,4 +703,3 @@ function splitComma(s: string): string[] {
   if (!trimmed) return [];
   return trimmed.split(",").map((x) => x.trim());
 }
-

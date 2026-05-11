@@ -14,15 +14,10 @@ describe("reconciler normalization helpers", () => {
       name: "ADD_TAX",
       definition: "=price * (1 + rate)",
       description: "Applies tax to a price.",
-      arguments: ["price", "rate"],
-      argumentDescriptions: {
-        price: "Base price.",
-        rate: "Tax rate.",
-      },
-      argumentExamples: {
-        price: "100",
-        rate: "0.0825",
-      },
+      parameters: [
+        { name: "price", description: "Base price.", examples: ["100"] },
+        { name: "rate", description: "Tax rate.", examples: ["0.0825"] },
+      ],
     };
 
     const normalized = normalizeFunction(fn);
@@ -53,28 +48,18 @@ describe("reconciler normalization helpers", () => {
     const first: NamedFunction = {
       name: "ADD_TAX",
       definition: "=price * (1 + rate)",
-      arguments: ["price", "rate"],
-      argumentDescriptions: {
-        price: "Base price.",
-        rate: "Tax rate.",
-      },
-      argumentExamples: {
-        price: "100",
-        rate: "0.0825",
-      },
+      parameters: [
+        { name: "price", description: "Base price.", examples: ["100"] },
+        { name: "rate", description: "Tax rate.", examples: ["0.0825"] },
+      ],
     };
     const second: NamedFunction = {
       name: "ADD_TAX",
       definition: "=price * (1 + rate)",
-      arguments: ["price", "rate"],
-      argumentDescriptions: {
-        rate: "Tax rate.",
-        price: "Base price.",
-      },
-      argumentExamples: {
-        rate: "0.0825",
-        price: "100",
-      },
+      parameters: [
+        { name: "price", description: "Base price.", examples: ["100"] },
+        { name: "rate", description: "Tax rate.", examples: ["0.0825"] },
+      ],
     };
 
     expect(normalizeFunction(second).hash).toBe(normalizeFunction(first).hash);
@@ -84,6 +69,7 @@ describe("reconciler normalization helpers", () => {
     const fn: NamedFunction = {
       name: "ADD_TAX",
       definition: "=price * (1 + rate)",
+      parameters: [],
     };
     const origin: FunctionOrigin = {
       kind: "package",
@@ -103,6 +89,24 @@ describe("reconciler normalization helpers", () => {
       version: "1.0.0",
       integrity: "sha256:original",
     });
+  });
+
+  it("clones caller-provided function parameters", () => {
+    const fn: NamedFunction = {
+      name: "ADD_TAX",
+      definition: "=price * (1 + rate)",
+      parameters: [
+        { name: "price", description: "Base price.", examples: ["100"] },
+      ],
+    };
+
+    const normalized = normalizeFunction(fn);
+    fn.parameters[0].description = "mutated";
+    fn.parameters[0].examples.push("200");
+
+    expect(normalized.parameters).toEqual([
+      { name: "price", description: "Base price.", examples: ["100"] },
+    ]);
   });
 
   it("normalizes project metadata into project state", () => {

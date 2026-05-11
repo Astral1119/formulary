@@ -41,7 +41,7 @@ export class ExcelAdapter implements PlatformAdapter {
         name: dn.name,
         definition,
         description: dn.comment,
-        arguments: args,
+        parameters: args.map((name) => ({ name, examples: [] })),
       };
     });
   }

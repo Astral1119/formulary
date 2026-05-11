@@ -27,6 +27,7 @@ export {
 export {
   type PlatformAdapter,
   type NamedFunction,
+  type NamedFunctionParameter,
   type ProjectMetadata,
   type Lockfile,
   type LockEntry,

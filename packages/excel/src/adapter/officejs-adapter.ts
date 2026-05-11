@@ -34,11 +34,18 @@ export class OfficeJSAdapter implements PlatformAdapter {
       names.load("items/name,items/formula,items/comment");
       await ctx.sync();
 
-      return names.items.map((item) => ({
-        name: item.name,
-        definition: item.formula?.startsWith("=") ? item.formula.slice(1) : item.formula,
-        description: item.comment ?? undefined,
-      }));
+      return names.items.map((item) => {
+        const definition = item.formula?.startsWith("=")
+          ? item.formula.slice(1)
+          : item.formula;
+        const args = unwrapLambdaArgs(definition);
+        return {
+          name: item.name,
+          definition,
+          description: item.comment ?? undefined,
+          parameters: args.map((name) => ({ name, examples: [] })),
+        };
+      });
     });
   }
 
@@ -247,4 +254,57 @@ function splitComma(s: string): string[] {
   const trimmed = s.trim();
   if (!trimmed) return [];
   return trimmed.split(",").map((x) => x.trim());
+}
+
+function unwrapLambdaArgs(definition: string): string[] {
+  let def = definition.trim();
+  if (def.startsWith("=")) def = def.slice(1).trim();
+
+  const match = /^LAMBDA\s*\(/i.exec(def);
+  if (!match) return [];
+
+  const innerStart = match[0].length;
+  let depth = 1;
+  let i = innerStart;
+  while (i < def.length && depth > 0) {
+    if (def[i] === "(") depth++;
+    else if (def[i] === ")") depth--;
+    i++;
+  }
+
+  const inner = def.slice(innerStart, i - 1);
+  const parts: string[] = [];
+  let current = "";
+  depth = 0;
+  let inString = false;
+
+  for (let j = 0; j < inner.length; j++) {
+    const ch = inner[j];
+    if (ch === '"' && !inString) {
+      inString = true;
+    } else if (ch === '"' && inString) {
+      if (j + 1 < inner.length && inner[j + 1] === '"') {
+        current += ch;
+        j++;
+        current += inner[j];
+        continue;
+      }
+      inString = false;
+    }
+
+    if (!inString) {
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === "," && depth === 0) {
+        parts.push(current.trim());
+        current = "";
+        continue;
+      }
+    }
+    current += ch;
+  }
+
+  parts.push(current.trim());
+  if (parts.length < 2) return [];
+  return parts.slice(0, -1);
 }
