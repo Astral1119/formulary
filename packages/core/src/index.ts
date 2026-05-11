@@ -56,3 +56,5 @@ export {
   satisfies,
   type SemVer,
 } from "./version.js";
+
+export * from "./reconciler/index.js";

@@ -310,7 +310,7 @@ export interface PlanWarning {
 
 export interface CapabilityRequirement {
   capability: keyof CapabilityMap;
-  minimum: Exclude<CapabilityLevel, "unsupported">;
+  acceptableLevels: Exclude<CapabilityLevel, "unsupported">[];
 }
 
 export interface PlanPreview {
@@ -319,7 +319,7 @@ export interface PlanPreview {
 }
 
 export interface ApplyPolicy {
-  applyable: boolean;
+  applicable: boolean;
   blockedBy: string[];
   verification: "required" | "recommended" | "unavailable";
 }
@@ -706,7 +706,7 @@ describe("planInstallPackage", () => {
       },
     );
 
-    expect(plan.applyPolicy.applyable).toBe(true);
+    expect(plan.applyPolicy.applicable).toBe(true);
     expect(plan.conflicts).toEqual([]);
     expect(plan.preview.packages).toEqual([{ name: "charter", version: "1.0.0", direct: true }]);
     expect(plan.preview.functions).toContainEqual({ name: "CHARTER_MAP", action: "create" });
@@ -746,7 +746,7 @@ describe("planInstallPackage", () => {
       },
     );
 
-    expect(plan.applyPolicy.applyable).toBe(false);
+    expect(plan.applyPolicy.applicable).toBe(false);
     expect(plan.conflicts).toContainEqual(
       expect.objectContaining({
         kind: "function-name-collision",
@@ -766,7 +766,7 @@ describe("planInstallPackage", () => {
       },
     );
 
-    expect(plan.applyPolicy.applyable).toBe(false);
+    expect(plan.applyPolicy.applicable).toBe(false);
     expect(plan.conflicts).toContainEqual(
       expect.objectContaining({ kind: "unsupported-platform-rendering" }),
     );
@@ -782,7 +782,7 @@ describe("planInstallPackage", () => {
       },
     );
 
-    expect(plan.applyPolicy.applyable).toBe(false);
+    expect(plan.applyPolicy.applicable).toBe(false);
     expect(plan.diagnostics).toContainEqual(
       expect.objectContaining({
         code: "required-capability-unavailable",
@@ -1001,7 +1001,7 @@ function buildPlan(
     diagnostics,
     requiredCapabilities: REQUIRED_WRITE_CAPABILITIES.map((capability) => ({
       capability,
-      minimum: "direct",
+      acceptableLevels: ["direct"],
     })),
     preview: {
       packages,
@@ -1010,7 +1010,7 @@ function buildPlan(
         .map((step) => ({ name: step.functionName!, action: "create" as const })),
     },
     applyPolicy: {
-      applyable: blockedBy.length === 0,
+      applicable: blockedBy.length === 0,
       blockedBy,
       verification: "required",
     },
