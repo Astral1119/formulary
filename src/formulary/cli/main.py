@@ -1,5 +1,6 @@
 import typer
 import asyncio
+import os
 from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
@@ -30,8 +31,11 @@ console = Console()
 # add profile subcommand
 app.add_typer(profile_app, name="profile", help="Manage authentication profiles")
 
-# TODO: make this configurable
-REGISTRY_URL = "https://raw.githubusercontent.com/Astral1119/formulary-registry/main"
+# registry is frozen during the v2 rewrite. main moved to the v2 format this
+# client can't read, so pin to the frozen-gsheets-v1 tag (last v1 index +
+# .gspkg artifacts). set FORMULARY_REGISTRY to override, e.g. for testing.
+_FROZEN_REGISTRY = "https://raw.githubusercontent.com/Astral1119/formulary-registry/frozen-gsheets-v1"
+REGISTRY_URL = os.environ.get("FORMULARY_REGISTRY", _FROZEN_REGISTRY)
 
 def get_install_service(url: str, headless: bool = True) -> InstallService:
     # get active profile
@@ -514,6 +518,15 @@ def pack(output: str = "./dist", headed: bool = False):
 @app.command()
 def publish(dry_run: bool = False, headed: bool = False):
     """publish package to registry via GitHub PR."""
+    # registry frozen during the v2 rewrite, so no new packages for now.
+    console.print(Panel.fit(
+        "[bold yellow]Publishing is paused[/bold yellow]\n"
+        "The Formulary registry is frozen while v2 (the TypeScript / Excel\n"
+        "rewrite) is in progress, so new packages aren't being accepted right now.\n"
+        "Existing packages remain installable.",
+        border_style="yellow"
+    ))
+    raise typer.Exit(code=0)
     url = get_sheet_url()
     if not url:
         console.print("[red]No sheet URL configured. Run 'formulary init' first.[/red]")

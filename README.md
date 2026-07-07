@@ -1,5 +1,13 @@
 # Formulary - Google Sheets Package Manager
 
+> [!WARNING]
+> **Formulary is frozen while v2 is being built.**
+> This is the original Python / Google Sheets version, now in maintenance-only
+> mode while a from-scratch v2 (TypeScript, Excel-first) rewrite is in progress.
+> The client is pinned to a frozen snapshot of the registry (`frozen-gsheets-v1`)
+> so existing packages keep installing, but **the registry is not accepting new
+> packages** and `formulary publish` is disabled until v2 ships.
+
 A package manager for Google Sheets that enables you to install, manage, and share reusable named functions across spreadsheets.
 
 ## Features
