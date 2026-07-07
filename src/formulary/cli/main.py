@@ -5,7 +5,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 
-from ..config import get_sheet_url, set_sheet_url, CONFIG_DIR
+from ..config import get_sheet_url, set_sheet_url, normalize_sheet_url, CONFIG_DIR
 from ..sheets.driver import PlaywrightDriver
 from ..sheets.client import SheetClient
 from ..sheets.metadata import MetadataManager
@@ -114,6 +114,7 @@ def main_callback(ctx: typer.Context):
 @app.command()
 def init(url: str, name: str = None, force: bool = False, interactive: bool = True, headed: bool = False):
     """initialize a new project with the given Google Sheet URL."""
+    url = normalize_sheet_url(url)
     set_sheet_url(url)
     headless = not headed
     
@@ -284,6 +285,7 @@ def dev(url: str, package_name: str, version: str = None, headed: bool = False):
     installs the package and its dependencies into the sheet, and sets up
     the project metadata so you can modify and republish it.
     """
+    url = normalize_sheet_url(url)
     set_sheet_url(url)
     
     dev_service = get_dev_service(url, headless=not headed)

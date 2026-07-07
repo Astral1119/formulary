@@ -4,6 +4,15 @@ from typing import Optional
 CONFIG_DIR = Path.home() / ".formulary"
 CONFIG_FILE = CONFIG_DIR / "config"
 
+def normalize_sheet_url(url: str) -> str:
+    """clean up a pasted sheet URL. terminals (e.g. zsh url-quote-magic) insert
+    backslashes before ? = # & on paste; a valid sheets URL has none, so strip
+    them along with any surrounding whitespace or quotes."""
+    if not url:
+        return url
+    url = url.strip().strip('"').strip("'").strip()
+    return url.replace("\\", "")
+
 def get_sheet_url() -> Optional[str]:
     """get the configured sheet URL from config file."""
     if not CONFIG_FILE.exists():
@@ -13,7 +22,7 @@ def get_sheet_url() -> Optional[str]:
         with open(CONFIG_FILE, "r") as f:
             for line in f:
                 if line.startswith("FORMULARY_SHEET_URL="):
-                    return line.strip().split("=", 1)[1]
+                    return normalize_sheet_url(line.strip().split("=", 1)[1])
     except (IOError, PermissionError, OSError):
         # if we can't read the file, treat as not configured
         return None
@@ -21,6 +30,7 @@ def get_sheet_url() -> Optional[str]:
 
 def set_sheet_url(url: str):
     """set the sheet URL in config file, preserving other config values."""
+    url = normalize_sheet_url(url)
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     
     # read existing config
