@@ -52,6 +52,14 @@ export function resolveDependencies(
   return { ...shared, ...platformDeps };
 }
 
+/**
+ * Structural validation: is this manifest well-formed?
+ * Used at all stages (init, install, publish).
+ *
+ * Publish-only requirements (description, owners, exports) live in
+ * preflight checks, not here, because a workbook in the middle of
+ * authoring may legitimately have empty fields.
+ */
 export function validateManifest(manifest: Manifest): string[] {
   const errors: string[] = [];
 
@@ -65,10 +73,6 @@ export function validateManifest(manifest: Manifest): string[] {
   else if (!/^\d+\.\d+\.\d+$/.test(manifest.version))
     errors.push("version must be semver (X.Y.Z)");
 
-  if (!manifest.description) errors.push("description is required");
-  if (!manifest.owners?.length) errors.push("at least one owner is required");
-  if (!manifest.exports?.length)
-    errors.push("at least one export is required");
   if (!manifest.platforms?.length)
     errors.push("at least one platform is required");
 

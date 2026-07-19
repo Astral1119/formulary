@@ -32,9 +32,21 @@ describe("validateManifest", () => {
     expect(errors.some((e) => e.includes("semver"))).toBe(true);
   });
 
-  it("rejects empty exports", () => {
-    const errors = validateManifest({ ...validManifest, exports: [] });
-    expect(errors.some((e) => e.includes("export"))).toBe(true);
+  it("rejects missing platforms", () => {
+    const errors = validateManifest({ ...validManifest, platforms: [] });
+    expect(errors.some((e) => e.includes("platform"))).toBe(true);
+  });
+
+  it("accepts empty exports (auto-synced at publish)", () => {
+    expect(validateManifest({ ...validManifest, exports: [] })).toEqual([]);
+  });
+
+  it("accepts empty description (publish-time check)", () => {
+    expect(validateManifest({ ...validManifest, description: "" })).toEqual([]);
+  });
+
+  it("accepts empty owners (publish-time check)", () => {
+    expect(validateManifest({ ...validManifest, owners: [] })).toEqual([]);
   });
 });
 

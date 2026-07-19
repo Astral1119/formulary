@@ -4,9 +4,15 @@ import {
   resolveDeps,
   pickVersion,
 } from "@formulary/core";
-import type { PackageMeta, VersionMeta, Lockfile } from "@formulary/core";
+import type {
+  PackageMeta,
+  VersionMeta,
+  Lockfile,
+  Manifest,
+} from "@formulary/core";
 import { OfficeJSAdapter } from "../adapter/officejs-adapter.js";
 import { parseBundle } from "../bundle.js";
+import { openPublishModal, bindPublishModal } from "./publish-view.js";
 
 // ─── State ────────────────────────────────────────────────────────
 
@@ -40,6 +46,14 @@ function bindEvents(): void {
 
   // Init button
   document.getElementById("btn-init")!.addEventListener("click", doInit);
+
+  // Publish button (Project tab)
+  document
+    .getElementById("btn-publish")!
+    .addEventListener("click", doPublish);
+
+  // Publish modal events
+  bindPublishModal();
 
   // Local file install
   const fileInput = document.getElementById("file-input") as HTMLInputElement;
@@ -555,11 +569,13 @@ async function refreshInstalled(): Promise<void> {
 const MANIFEST_FIELDS = [
   { key: "name", label: "Name", placeholder: "my-package" },
   { key: "version", label: "Version", placeholder: "0.1.0" },
-  { key: "description", label: "Description", placeholder: "" },
+  { key: "description", label: "Description", placeholder: "What this package does" },
   { key: "license", label: "License", placeholder: "MIT" },
-  { key: "owners", label: "Owners", placeholder: "username" },
-  { key: "exports", label: "Exports", placeholder: "FUNC_A, FUNC_B" },
+  { key: "owners", label: "Owners", placeholder: "github-username, other-user" },
 ];
+
+// Note: `exports` is auto-derived at publish time from the actual functions
+// in the workbook. Authors don't edit it manually.
 
 async function loadProject(): Promise<void> {
   try {
@@ -664,6 +680,38 @@ async function doInit(): Promise<void> {
   } catch (err) {
     showStatus(`Init failed: ${(err as Error).message}`, "error");
   }
+}
+
+async function doPublish(): Promise<void> {
+  try {
+    const projectMeta = await adapter.readMetadata();
+    if (!projectMeta) {
+      showStatus("Initialize project first", "error");
+      return;
+    }
+
+    // Build a Manifest from the project metadata sheet
+    const manifest: Manifest = {
+      name: String(projectMeta.name ?? "").trim() || "my-package",
+      version: String(projectMeta.version ?? "").trim() || "0.1.0",
+      description: String(projectMeta.description ?? "").trim(),
+      owners: parseList(projectMeta.owners),
+      license: String(projectMeta.license ?? "").trim() || "MIT",
+      dependencies: projectMeta.dependencies ?? {},
+      exports: parseList(projectMeta.exports),
+      platforms: ["excel"],
+    };
+
+    await openPublishModal(adapter, manifest);
+  } catch (err) {
+    showStatus(`Publish failed: ${(err as Error).message}`, "error");
+  }
+}
+
+function parseList(val: unknown): string[] {
+  if (!val) return [];
+  if (typeof val !== "string") return [];
+  return val.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 // ─── Util ─────────────────────────────────────────────────────────

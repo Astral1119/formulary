@@ -48,6 +48,20 @@ export {
   type MetaFetcher,
 } from "./resolver.js";
 
+export { unwrapLambda, wrapLambda } from "./lambda.js";
+
+export {
+  buildRegistryUpdate,
+  runPreflightChecks,
+  findExfiltrationCalls,
+  syncManifestForPublish,
+  FORBIDDEN_FUNCTIONS,
+  type RegistryUpdate,
+  type RegistryBackend,
+  type VersionEntry,
+  type PreflightCheck,
+} from "./publish.js";
+
 export {
   parseSemVer,
   compareSemVer,

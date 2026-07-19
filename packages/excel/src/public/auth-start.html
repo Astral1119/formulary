@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Formulary — Sign in</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #f6f8fa;
+        color: #1a1d21;
+      }
+      .card {
+        background: #fff;
+        padding: 32px 40px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        text-align: center;
+      }
+      .spinner {
+        width: 24px; height: 24px;
+        border: 3px solid #e1e4e8;
+        border-top-color: #0f7b6c;
+        border-radius: 50%;
+        animation: spin 600ms linear infinite;
+        margin: 0 auto 12px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      h1 { font-size: 16px; margin: 8px 0 4px; }
+      p { color: #5c6370; font-size: 13px; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="spinner"></div>
+      <h1>Redirecting to GitHub…</h1>
+      <p>You'll be asked to authorize Formulary.</p>
+    </div>
+    <script>
+      // This page exists because Office Add-in dialogs require the
+      // initial URL to be same-origin with the taskpane. We pass the
+      // parent origin to the auth worker so it knows what targetOrigin
+      // to use when calling messageParent from the OAuth callback page.
+      var workerBase = "https://formulary.dev/auth/github";
+      var returnOrigin = window.location.origin;
+      window.location.replace(
+        workerBase + "/start?return_origin=" + encodeURIComponent(returnOrigin)
+      );
+    </script>
+  </body>
+</html>

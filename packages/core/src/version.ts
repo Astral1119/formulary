@@ -37,7 +37,7 @@ export function parseConstraint(
   specifier: string,
 ): ((version: SemVer) => boolean) | null {
   const trimmed = specifier.trim();
-  if (!trimmed) return () => true; // empty = any version
+  if (!trimmed || trimmed === "*") return () => true; // empty / "*" = any version
 
   // exact: "1.2.3"
   const exact = parseSemVer(trimmed);

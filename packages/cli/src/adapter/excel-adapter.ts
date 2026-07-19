@@ -7,7 +7,7 @@ import type {
   LockEntry,
 } from "@formulary/core";
 import { XlsxFile, type SheetCell } from "./xlsx.js";
-import { unwrapLambda } from "./lambda.js";
+import { unwrapLambda } from "@formulary/core";
 
 const MANIFEST_SHEET = "__manifest__";
 const LOCK_SHEET = "__lock__";

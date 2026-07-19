@@ -34,11 +34,26 @@ export class OfficeJSAdapter implements PlatformAdapter {
       names.load("items/name,items/formula,items/comment");
       await ctx.sync();
 
-      return names.items.map((item) => ({
-        name: item.name,
-        definition: item.formula?.startsWith("=") ? item.formula.slice(1) : item.formula,
-        description: item.comment ?? undefined,
-      }));
+      return names.items
+        .filter((item) => {
+          // Skip Excel's internal compatibility names. These are added by
+          // Excel itself for cross-version LAMBDA support and aren't user
+          // functions.
+          if (item.name.startsWith("_xl")) return false;
+          // Only include LAMBDAs — other defined names (cell refs, constants)
+          // aren't packageable.
+          const def = item.formula?.startsWith("=")
+            ? item.formula.slice(1)
+            : item.formula ?? "";
+          return /^\s*(?:_xlfn\.)?LAMBDA\s*\(/i.test(def);
+        })
+        .map((item) => ({
+          name: item.name,
+          definition: item.formula?.startsWith("=")
+            ? item.formula.slice(1)
+            : item.formula,
+          description: item.comment ?? undefined,
+        }));
     });
   }
 

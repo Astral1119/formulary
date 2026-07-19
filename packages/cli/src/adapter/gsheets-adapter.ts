@@ -15,7 +15,7 @@ import type {
 import type { Page } from "playwright";
 import { GSheetsDriver } from "./gsheets-driver.js";
 import { getAccessToken } from "../oauth.js";
-import { unwrapLambda, wrapLambda } from "./lambda.js";
+import { unwrapLambda, wrapLambda } from "@formulary/core";
 
 const MANIFEST_SHEET = "__manifest__";
 const LOCK_SHEET = "__lock__";

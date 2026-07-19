@@ -5,7 +5,6 @@ dist
 
 # build artifacts
 *.fpkg
-*.gspkg
 
 # local test workbooks
 test*.xlsx

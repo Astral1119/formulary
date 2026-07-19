@@ -1,0 +1,19 @@
+name = "formulary-auth"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Public OAuth app client ID — safe to commit.
+[vars]
+GITHUB_CLIENT_ID = "Ov23licPLQb7ZRU8RuOp"
+ALLOWED_RETURN_ORIGIN = "https://formulary.dev"
+
+# Routes — uncomment after adding formulary.dev as a Cloudflare zone.
+# Until then, deploy as `formulary-auth.<your-subdomain>.workers.dev`.
+#
+[[routes]]
+pattern = "formulary.dev/auth/github/*"
+zone_name = "formulary.dev"
+
+# Secrets — set these via `wrangler secret put`:
+#   GITHUB_CLIENT_SECRET — from the GitHub OAuth app settings
+#   COOKIE_SECRET        — random 32+ char string for HMAC-signing the state cookie

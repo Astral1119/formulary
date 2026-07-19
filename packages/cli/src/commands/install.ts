@@ -41,7 +41,7 @@ export async function install(
   xlsxPath: string,
   options: InstallOptions,
 ): Promise<void> {
-  if (source.endsWith(".fpkg") || source.endsWith(".gspkg") || source.endsWith(".zip")) {
+  if (source.endsWith(".fpkg") || source.endsWith(".zip")) {
     await installFromBundle(source, xlsxPath, options);
   } else if (await isLocalPath(source)) {
     await installLocal(source, xlsxPath, options);

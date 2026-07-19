@@ -23,7 +23,7 @@ import type {
   NamedFunction,
 } from "@formulary/core";
 import { ExcelAdapter } from "../adapter/excel-adapter.js";
-import { unwrapLambda } from "../adapter/lambda.js";
+import { unwrapLambda } from "@formulary/core";
 
 interface ExtractOptions {
   output: string;

@@ -10,7 +10,13 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Formulary" />
   <Description DefaultValue="Spreadsheet package manager — browse, install, and manage formula packages." />
-  <SupportUrl DefaultValue="https://github.com/Astral1119/formulary" />
+  <SupportUrl DefaultValue="https://formulary.dev" />
+
+  <!-- Origins the add-in is allowed to navigate to (e.g. OAuth dialog targets) -->
+  <AppDomains>
+    <AppDomain>https://formulary.dev</AppDomain>
+    <AppDomain>https://github.com</AppDomain>
+  </AppDomains>
 
   <Hosts>
     <Host Name="Workbook" />

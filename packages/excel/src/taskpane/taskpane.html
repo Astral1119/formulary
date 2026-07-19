@@ -80,6 +80,9 @@
           <div class="project-fields" id="project-fields"></div>
           <div class="section-label">Dependencies</div>
           <div class="project-fields" id="project-deps"></div>
+          <div class="project-actions">
+            <button class="btn btn-primary" id="btn-publish">Publish</button>
+          </div>
         </div>
       </section>
 
@@ -109,7 +112,7 @@
       <section id="installed-panel" class="panel">
         <div class="local-install">
           <label class="file-drop" id="file-drop">
-            <input type="file" id="file-input" accept=".fpkg,.gspkg,.zip" hidden />
+            <input type="file" id="file-input" accept=".fpkg,.zip" hidden />
             <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
               <path d="M8 2v9M4.5 7.5L8 11l3.5-3.5M2.5 13.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
@@ -153,6 +156,108 @@
         <div class="detail-section" id="detail-owners-section">
           <h3>Owners</h3>
           <div id="detail-owners" class="detail-owners"></div>
+        </div>
+      </section>
+
+      <!-- Publish modal (overlays everything) -->
+      <section id="publish-modal" class="publish-modal" hidden>
+        <div class="publish-header">
+          <button class="back-btn" id="btn-publish-back">
+            <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+              <path d="M10 2L4 8l6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Cancel
+          </button>
+          <div class="publish-title" id="publish-title">Publish</div>
+        </div>
+
+        <!-- State: preview -->
+        <div id="publish-state-preview" class="publish-state">
+          <div class="section-label">Functions to publish</div>
+          <ul class="func-list" id="publish-functions"></ul>
+
+          <div class="section-label" id="publish-excluded-label" hidden>
+            Excluded (dependencies)
+          </div>
+          <ul class="func-list" id="publish-excluded"></ul>
+
+          <div class="section-label">Pre-publish checks</div>
+          <ul class="check-list" id="publish-checks"></ul>
+
+          <div class="section-label">Auth</div>
+          <div id="publish-auth-status" class="publish-auth"></div>
+
+          <div class="publish-actions">
+            <button class="btn btn-primary" id="btn-publish-confirm">
+              Publish
+            </button>
+          </div>
+        </div>
+
+        <!-- State: PAT auth -->
+        <div id="publish-state-auth" class="publish-state" hidden>
+          <p class="publish-instruction">
+            Sign in to GitHub with a Personal Access Token.
+          </p>
+          <ol class="publish-steps">
+            <li>
+              <a
+                class="publish-link"
+                id="publish-pat-link"
+                target="_blank"
+                rel="noopener"
+              >Generate a fine-grained PAT</a>
+              with read+write access to the
+              <code>formulary-registry</code> repo
+              (Contents and Pull requests permissions)
+            </li>
+            <li>Paste it below</li>
+          </ol>
+          <input
+            type="password"
+            class="publish-pat-input"
+            id="publish-pat-input"
+            placeholder="github_pat_..."
+            autocomplete="off"
+          />
+          <button class="btn btn-primary" id="btn-publish-pat-save">
+            Save token & publish
+          </button>
+          <div class="publish-status" id="publish-auth-tick"></div>
+        </div>
+
+        <!-- State: publishing -->
+        <div id="publish-state-progress" class="publish-state" hidden>
+          <div class="loader"></div>
+          <div class="publish-status" id="publish-progress-msg">
+            preparing...
+          </div>
+        </div>
+
+        <!-- State: success -->
+        <div id="publish-state-success" class="publish-state" hidden>
+          <div class="publish-success">
+            <div class="publish-success-icon">✓</div>
+            <div class="publish-success-msg">Pull request opened</div>
+            <a
+              class="btn btn-primary"
+              id="publish-pr-link"
+              target="_blank"
+              rel="noopener"
+            >
+              View pull request
+            </a>
+            <button class="btn btn-outline" id="btn-publish-done">Done</button>
+          </div>
+        </div>
+
+        <!-- State: error -->
+        <div id="publish-state-error" class="publish-state" hidden>
+          <div class="publish-error">
+            <div class="publish-error-icon">!</div>
+            <div class="publish-error-msg" id="publish-error-msg"></div>
+            <button class="btn btn-primary" id="btn-publish-retry">Try again</button>
+          </div>
         </div>
       </section>
     </div>
